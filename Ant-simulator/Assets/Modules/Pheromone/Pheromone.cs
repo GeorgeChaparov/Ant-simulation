@@ -7,22 +7,22 @@ public enum PheromoneType
 }
 
 
-public struct Pheromone
+public struct Pheromone(int baseStrength, float creationTime, float decaySpeed)
 {
     /// <summary>
     /// How strong the scent of the pheromone is.
     /// </summary>
-    public int baseStrength;
+    public int baseStrength = baseStrength;
 
-    public PheromoneType type;
+    public PheromoneType type = PheromoneType.None;
 
     /// <summary>
     /// When was the pheromone secreted.
     /// </summary>
-    public float creationTime;
+    public float creationTime = creationTime;
 
     /// <summary>
     /// How fast should the scent of the pheromone decay.
     /// </summary>
-    public float decaySpeed;
+    public float decaySpeed = decaySpeed;
 }

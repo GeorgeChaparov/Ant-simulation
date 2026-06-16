@@ -1,5 +1,3 @@
-using NUnit.Framework.Constraints;
-
 using UnityEngine;
 
 
@@ -27,23 +25,45 @@ public enum AntState
     /// <summary>
     /// The ant follows established path to the nest so it can leave the food there.
     /// </summary>
-    CarryingFoodToNest = 4,
+    FollowingHomePheromone = 4,
     /// <summary>
     /// The ant does not follow established path to the nest. Its "lost".
     /// </summary>
     SearchingForNest = 5,
 }
 
-public struct Ant
+public struct Ant(int id, Vector2 pos, Vector2 orientation)
 {
-    public Vector2 position;
-    public float orientation;
-    public Directions nestDirection;
-    public AntState state;
+    public Vector2 position = pos;
+    public Vector2 orientation = orientation;
+    public float movementSpeed = Random.value;
+
+    /// <summary>
+    /// The general direction to the nest.
+    /// </summary>
+    public Directions nestDirection = Directions.None;
+    /// <summary>
+    /// The position of the nest. Its used to get the direction of the nest and never directly for path finding.
+    /// Its equal to the position in the beginning, because the nest is the thing that "spawns" the ant.
+    /// </summary>
+    private readonly Vector2 nestPosition = pos;
+    /// <summary>
+    /// The distance to the nest (not exact distance).
+    /// </summary>
+    public readonly float NestDistance => (nestPosition - position).sqrMagnitude;
+    /// <summary>
+    /// How confident the ant is in its estimate of the nest direction.
+    /// </summary>
+    public float nestDirectionConfidence;
+
+    public AntState state = AntState.None;
+    public int foodAmount = 0;
+    public float foodMemoryStrength = 0;
+
 
     // Metrics
-    public int id;
-    public int age;
-    public int tripsCompleted;
-    public int distanceTraveled;
+    public int id = id;
+    public int age = 0;
+    public int tripsCompleted = 0;
+    public int distanceTraveled = 0;
 }
