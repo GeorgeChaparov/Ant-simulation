@@ -1,7 +1,4 @@
 using System.Collections.Generic;
-
-using Unity.VisualScripting;
-
 using UnityEngine;
 
 public class AntManager : MonoBehaviour
@@ -73,7 +70,7 @@ public class AntManager : MonoBehaviour
             case AntState.FollowingFoodPheromone:
                 FollowPheromones(ant);
                 break;
-            case AntState.CarryingFoodToNest:
+            case AntState.FollowingHomePheromone:
                 FollowPheromones(ant);
                 break;
             default:
