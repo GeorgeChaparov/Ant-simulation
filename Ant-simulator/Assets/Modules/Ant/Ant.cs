@@ -1,3 +1,5 @@
+using NUnit.Framework;
+
 using UnityEngine;
 
 
@@ -38,6 +40,8 @@ public struct Ant
     public Vector2 orientation;
     public float movementSpeed;
 
+    public (PheromoneType , PheromoneSetting)[] pheromones = new (PheromoneType, PheromoneSetting)[2];
+
     /// <summary>
     /// The general direction to the nest.
     /// </summary>
@@ -77,5 +81,8 @@ public struct Ant
         this.nestPosition = pos;
 
         this.movementSpeed = Random.value;
+
+        this.pheromones[0] = (PheromoneType.Food, new PheromoneSetting(Random.Range(1, 10), Random.value));
+        this.pheromones[1] = (PheromoneType.Nest, new PheromoneSetting(Random.Range(1, 10), Random.value));
     }
 }
