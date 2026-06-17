@@ -82,7 +82,7 @@ public struct Ant
 
         this.movementSpeed = Random.value;
 
-        this.pheromones[0] = (PheromoneType.Food, new PheromoneSetting(Random.Range(1, 10), Random.value));
-        this.pheromones[1] = (PheromoneType.Nest, new PheromoneSetting(Random.Range(1, 10), Random.value));
+        this.pheromones[0] = (PheromoneType.Food, new PheromoneSetting(Random.Range(1, 100)));
+        this.pheromones[1] = (PheromoneType.Nest, new PheromoneSetting(Random.Range(1, 100)));
     }
 }

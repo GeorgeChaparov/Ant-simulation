@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 using UnityEngine;
 
 public class PheromoneManager : MonoBehaviour
@@ -10,15 +7,33 @@ public class PheromoneManager : MonoBehaviour
     [SerializeField]
     private int height = 10;
 
+    [SerializeField]
+    [Tooltip("How often should the pheromones update.")]
+    private float updateInterval = 0.5f;
+
+
+    [SerializeField]
+    [Tooltip("How fast should the pheromones for food decay.")]
+    private float foodPheromoneDecayRate = 1f;
+
+    [SerializeField]
+    [Tooltip("How fast should the pheromones for the nest decay.")]
+    private float nestPheromoneDecayRate = 1f;
+
     private float[] foodIntensity;
     private float[] nestIntensity;
 
+    /// <summary>
+    /// Used to check which cells have any pheromones in them. Will be changed with lazy decay as needed.
+    /// </summary>
     private bool[] dirtyCells;
+
+    /// <summary>
+    /// Stores the last time each cell was updated. Will be removed in favoure of lazy decay as needed.
+    /// </summary>
     private float[] lastUpdate;
 
     private int gridSize = 0;
-
-    private float updateInterval = 0.5f;
 
 
     void Start()
@@ -49,7 +64,7 @@ public class PheromoneManager : MonoBehaviour
     public void AddPheromoneOn(Vector2 position, PheromoneSetting pheromoneSettings, PheromoneType pheromoneType)
     {
         int index = GetPosFromVector(position);
-        float currIntensity = 0;
+        float currIntensity;
 
         switch (pheromoneType)
         {
@@ -62,7 +77,7 @@ public class PheromoneManager : MonoBehaviour
                     pheromoneSettings.strength :
                     DepositPheromone(pheromoneSettings.strength, currIntensity);
 
-                lastUpdate[index] = Time.deltaTime;
+                lastUpdate[index] = Time.time;
                 dirtyCells[index] = true;
                 break;
             case PheromoneType.Nest:
@@ -72,7 +87,7 @@ public class PheromoneManager : MonoBehaviour
                     pheromoneSettings.strength :
                     DepositPheromone(pheromoneSettings.strength, currIntensity);
 
-                lastUpdate[index] = Time.deltaTime;
+                lastUpdate[index] = Time.time;
                 dirtyCells[index] = true;
                 break;
             default:
@@ -106,26 +121,21 @@ public class PheromoneManager : MonoBehaviour
     {
         for (int i = 0; i < gridSize; i++)
         {
-            if (!dirtyCells[i]) { return; }
-            if (Time.deltaTime - lastUpdate[i] <= updateInterval) { return; }
+            if (!dirtyCells[i]) { continue; }
+            if (Time.deltaTime - lastUpdate[i] <= updateInterval) { continue; }
 
-            float newFoodIntensity = DecayPheromone(1, foodIntensity[i]);
-            if (newFoodIntensity <= 0)
+            float newFoodIntensity = DecayPheromone(foodPheromoneDecayRate, foodIntensity[i]);
+            float newNestIntensity = DecayPheromone(nestPheromoneDecayRate, nestIntensity[i]);
+
+            foodIntensity[i] = newFoodIntensity <= 0 ? 0 : newFoodIntensity;
+            nestIntensity[i] = newNestIntensity <= 0 ? 0 : newNestIntensity;
+
+            if (newFoodIntensity + newNestIntensity <= 0)
             {
-                foodIntensity[i] = 0;
                 dirtyCells[i] = false;
             }
-            else { foodIntensity[i] = newFoodIntensity; }
 
-            float newNestIntensity = DecayPheromone(1, nestIntensity[i]);
-            if (newNestIntensity <= 0)
-            {
-                nestIntensity[i] = 0;
-                dirtyCells[i] = false;
-            }
-            else { nestIntensity[i] = newNestIntensity; }
-
-            lastUpdate[i] = Time.deltaTime;
+            lastUpdate[i] = Time.time;
         }
     }
 
@@ -136,7 +146,7 @@ public class PheromoneManager : MonoBehaviour
 
     public float DecayPheromone(float baseDecayRate, float currIntensity)
     {
-        float k = 1f; // Shows how muche the intensity plays a role in the decay rate.
+        float k = 1f; // Shows how much the intensity plays a role in the decay rate.
         float decayRate = baseDecayRate / (1 + currIntensity * k);
 
         currIntensity *= (1f - decayRate * Time.deltaTime);

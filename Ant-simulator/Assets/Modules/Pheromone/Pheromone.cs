@@ -15,15 +15,8 @@ public struct PheromoneSetting
     /// </summary>
     public float strength;
 
-    /// <summary>
-    /// How fast should the scent of the pheromone decay.
-    /// </summary>
-    public float decaySpeed;
-
-
-    public PheromoneSetting(float strength, float decaySpeed)
+    public PheromoneSetting(float strength)
     {
         this.strength = strength;
-        this.decaySpeed = decaySpeed;
     }
 }
