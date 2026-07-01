@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 using UnityEngine;
 
 public class PheromoneManager : MonoBehaviour
@@ -26,7 +29,7 @@ public class PheromoneManager : MonoBehaviour
     /// <summary>
     /// Used to check which cells have any pheromones in them. Will be changed with lazy decay as needed.
     /// </summary>
-    private bool[] dirtyCells;
+    private HashSet<int> activeCells;
 
     /// <summary>
     /// Stores the last time each cell was updated. Will be removed in favoure of lazy decay as needed.
@@ -42,7 +45,7 @@ public class PheromoneManager : MonoBehaviour
         foodIntensity = new float[gridSize];
         nestIntensity = new float[gridSize];
 
-        dirtyCells = new bool[gridSize];
+        activeCells = new HashSet<int>();
         lastUpdate = new float[gridSize];
 
         for (int i = 0; i < gridSize; i++)
@@ -50,7 +53,6 @@ public class PheromoneManager : MonoBehaviour
             foodIntensity[i] = 0;
             nestIntensity[i] = 0;
 
-            dirtyCells[i] = false;
             lastUpdate[i] = 0;
         }
     }
@@ -61,34 +63,25 @@ public class PheromoneManager : MonoBehaviour
         UpdatePheromones();
     }
 
-    public void AddPheromoneOn(Vector2 position, PheromoneSetting pheromoneSettings, PheromoneType pheromoneType)
+    public void DepositPheromoneOn(Vector2 position, PheromoneSetting pheromoneSettings, PheromoneType pheromoneType)
     {
         int index = GetPosFromVector(position);
-        float currIntensity;
 
         switch (pheromoneType)
         {
             case PheromoneType.None:
                 break;
             case PheromoneType.Food:
-                currIntensity = foodIntensity[index];
-
-                foodIntensity[index] = currIntensity == 0 ? 
-                    pheromoneSettings.strength :
-                    DepositPheromone(pheromoneSettings.strength, currIntensity);
+                foodIntensity[index] += pheromoneSettings.strength;
 
                 lastUpdate[index] = Time.time;
-                dirtyCells[index] = true;
+                activeCells.Add(index);
                 break;
             case PheromoneType.Nest:
-                currIntensity = nestIntensity[index];
-
-                nestIntensity[index] = currIntensity == 0 ?
-                    pheromoneSettings.strength :
-                    DepositPheromone(pheromoneSettings.strength, currIntensity);
+                nestIntensity[index] += pheromoneSettings.strength;
 
                 lastUpdate[index] = Time.time;
-                dirtyCells[index] = true;
+                activeCells.Add(index);
                 break;
             default:
                 break;
@@ -119,23 +112,31 @@ public class PheromoneManager : MonoBehaviour
 
     private void UpdatePheromones()
     {
-        for (int i = 0; i < gridSize; i++)
+        List<int> removeList = new List<int>();
+
+        foreach (var cellIndex in activeCells)
         {
-            if (!dirtyCells[i]) { continue; }
-            if (Time.deltaTime - lastUpdate[i] <= updateInterval) { continue; }
+            if (Time.deltaTime - lastUpdate[cellIndex] <= updateInterval) { continue; }
 
-            float newFoodIntensity = DecayPheromone(foodPheromoneDecayRate, foodIntensity[i]);
-            float newNestIntensity = DecayPheromone(nestPheromoneDecayRate, nestIntensity[i]);
+            float newFoodIntensity = DecayPheromone(foodPheromoneDecayRate, foodIntensity[cellIndex]);
+            float newNestIntensity = DecayPheromone(nestPheromoneDecayRate, nestIntensity[cellIndex]);
 
-            foodIntensity[i] = newFoodIntensity <= 0 ? 0 : newFoodIntensity;
-            nestIntensity[i] = newNestIntensity <= 0 ? 0 : newNestIntensity;
+            foodIntensity[cellIndex] = Math.Max(0, newFoodIntensity);
+            nestIntensity[cellIndex] = Math.Max(0, newFoodIntensity);
 
             if (newFoodIntensity + newNestIntensity <= 0)
             {
-                dirtyCells[i] = false;
+                removeList.Add(cellIndex);
             }
 
-            lastUpdate[i] = Time.time;
+            lastUpdate[cellIndex] = Time.time;
+        }
+
+        for (int i = removeList.Count - 1; i >= 0; i--)
+        {
+            int index = removeList[i];
+            activeCells.Remove(index);
+            removeList.Remove(index);
         }
     }
 
@@ -144,19 +145,12 @@ public class PheromoneManager : MonoBehaviour
         return Mathf.FloorToInt(position.y) * width + Mathf.FloorToInt(position.x);
     }
 
-    public float DecayPheromone(float baseDecayRate, float currIntensity)
+    private float DecayPheromone(float baseDecayRate, float currIntensity)
     {
         float k = 1f; // Shows how much the intensity plays a role in the decay rate.
         float decayRate = baseDecayRate / (1 + currIntensity * k);
 
         currIntensity *= (1f - decayRate * Time.deltaTime);
-
-        return currIntensity;
-    }
-
-    public float DepositPheromone(float amount, float currIntensity)
-    {
-        currIntensity += amount;
 
         return currIntensity;
     }

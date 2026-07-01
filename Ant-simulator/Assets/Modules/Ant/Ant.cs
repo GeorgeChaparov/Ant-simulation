@@ -82,7 +82,6 @@ public struct Ant
 
         this.movementSpeed = Random.value;
 
-        this.pheromones[0] = (PheromoneType.Food, new PheromoneSetting(Random.Range(1, 100)));
-        this.pheromones[1] = (PheromoneType.Nest, new PheromoneSetting(Random.Range(1, 100)));
+        // Might add different genome for each ant and so different proterties for each pheromone of each ant in the future.
     }
 }
