@@ -40,8 +40,6 @@ public struct Ant
     public Vector2 orientation;
     public float movementSpeed;
 
-    public (PheromoneType , PheromoneSetting)[] pheromones = new (PheromoneType, PheromoneSetting)[2];
-
     /// <summary>
     /// The general direction to the nest.
     /// </summary>
@@ -61,7 +59,7 @@ public struct Ant
     public float nestDirectionConfidence = 0.5f;
 
     public AntState state = AntState.None;
-    public int foodAmount = 0;
+    public bool haveFood = false;
     public float foodMemoryStrength = 0;
 
 

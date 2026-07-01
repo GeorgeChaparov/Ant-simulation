@@ -38,6 +38,18 @@ public class PheromoneManager : MonoBehaviour
 
     private int gridSize = 0;
 
+    private static PheromoneManager pheromoneManager = null;
+    public static PheromoneManager GetPheromoneManager { get { return pheromoneManager; } }
+
+    private void Awake()
+    {
+        pheromoneManager = FindAnyObjectByType<PheromoneManager>();
+
+        if (pheromoneManager.gameObject != gameObject)
+        {
+            Destroy(gameObject);
+        }
+    }
 
     void Start()
     {

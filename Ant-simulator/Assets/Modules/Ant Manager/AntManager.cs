@@ -1,14 +1,29 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.UI;
 
 public class AntManager : MonoBehaviour
 {
     private List<AntNest> Nests = new List<AntNest>();
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    private GameManager gameManager = null;
+
+    private static AntManager antManager = null;
+    public static AntManager GetAntManager { get { return antManager; } }
+
+    private void Awake()
+    {
+        antManager = FindAnyObjectByType<AntManager>();
+
+        if (antManager.gameObject != gameObject)
+        {
+            Destroy(gameObject);
+        }
+    }
+
     void Start()
     {
-        
+        gameManager = GameManager.GetGameManager; 
     }
 
     // Update is called once per frame
@@ -28,14 +43,19 @@ public class AntManager : MonoBehaviour
             {
                 Ant ant = Nest.Ants[j];
 
-                ChoseAntState(ant);
+                ChooseAntState(ant);
                 MoveAnt(ant);
             }
         }
     }
 
-    private void ChoseAntState(Ant ant)
+    private void ChooseAntState(Ant ant)
     {
+        if (ant.haveFood)
+        {
+            bool haveFoodPheromone;
+        }
+
         // If we dont know where the food is and there is not pheromone path to follow - AntState.SearchingForFood
 
         // If we have food but we dont know where the nest is - AntState.SearchingForNest
