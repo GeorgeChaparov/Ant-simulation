@@ -27,18 +27,20 @@ public enum AntState
     /// <summary>
     /// The ant follows established path to the nest so it can leave the food there.
     /// </summary>
-    FollowingHomePheromone = 4,
+    //FollowingHomePheromone = 4,
     /// <summary>
     /// The ant does not follow established path to the nest. Its "lost".
     /// </summary>
-    SearchingForNest = 5,
+    //SearchingForNest = 5,
 }
 
 public struct Ant
 {
     public Vector2 position;
+    public Vector2 targetPheromonePosition = Vector2.zero;
     public Vector2 orientation;
     public float movementSpeed;
+    public Vector2 Forward => position + orientation;
 
     /// <summary>
     /// The general direction to the nest.
@@ -62,6 +64,11 @@ public struct Ant
     public bool haveFood = false;
     public float foodMemoryStrength = 0;
 
+    /// <summary>
+    /// The number of blocks around the ant that are gonna be searched when searching for pheromones.
+    /// Can be changed to FOV in the future.
+    /// </summary>
+    public readonly int viewRadius = 3;
 
     // Metrics
     public int id;

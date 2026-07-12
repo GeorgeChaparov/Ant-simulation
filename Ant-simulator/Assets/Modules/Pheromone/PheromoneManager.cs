@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PheromoneManager : MonoBehaviour
 {
@@ -100,10 +101,96 @@ public class PheromoneManager : MonoBehaviour
         }
     }
 
-    public float GetPheromone(Vector2 position, PheromoneType type)
+    private (Vector2, float) GetStrongestPheromoneInRange(Vector2 position, PheromoneType type, int radius = 3)
     {
-        int index = GetPosFromVector(position);
+        int x = Mathf.FloorToInt(position.x);
+        int y = Mathf.FloorToInt(position.y);
 
+        int minX = Mathf.Max(0, x - radius);
+        int maxX = Mathf.Min(width - 1, x + radius);
+
+        int minY = Mathf.Max(0, y - radius);
+        int maxY = Mathf.Min(height - 1, y + radius);
+
+        int radiusSquared = radius * radius;
+
+        Vector2 strongestPos = Vector2.zero;
+        float strongestVal = 0;
+
+        for (int iy = minY; iy <= maxY; iy++)
+        {
+            for (int ix = minX; ix <= maxX; ix++)
+            {
+                int dx = ix - x;
+                int dy = iy - y;
+
+                if (dx * dx + dy * dy > radiusSquared)
+                    continue;
+
+                int index = GetIndexFromPos(ix, iy);
+
+                float intensity = GetPheromoneAt(index, type);
+
+                if (strongestVal < intensity)
+                {
+                    strongestVal = intensity;
+                    strongestPos.x = ix;
+                    strongestPos.y = iy;
+                }
+            }
+        }
+
+        if (strongestVal == 0)
+            return (Vector2.zero, 0);
+
+        return ((strongestPos - position).normalized, strongestVal);
+    }
+
+
+    /// <summary>
+    /// Searches for the strongest pheromone around three sensors positioned
+    /// relative to the given orientation.
+    /// </summary>
+    /// <param name="position">Current position</param>
+    /// <param name="orientation"></param>
+    /// <param name="type">The type of pheremone</param>
+    /// <param name="radius">The radius around each sensor that will be searched.</param>
+    /// <param name="angle">The angle of the sensors from the forward orientation.</param>
+    /// <param name="sensorsDistance">How far are the sensors form the position.</param>
+    /// <returns>The position of the stronges pheromone in the given radius around the sensors, as 2D vector. 
+    /// If the pheromone is not found, it returns Vector2.zero.</returns>
+    public Vector2 GetStrongestPheromonePos(Vector2 position, Vector2 orientation, PheromoneType type, int radius = 3, float angle = 30, float sensorsDistance = 3)
+    {
+        Vector2[] sensorsPos = new Vector2[3];
+        Vector2 forwardLeftSensor = position + Utils.Rotate(orientation, -angle) * sensorsDistance;
+        Vector2 forwardSensor = position + orientation * sensorsDistance;
+        Vector2 forwardRightSensor = position + Utils.Rotate(orientation, angle) * sensorsDistance;
+
+        (Vector2 strongestPosLeft, float strongestValLeft) = GetStrongestPheromoneInRange(forwardLeftSensor, type, radius);
+        (Vector2 strongestPosForward, float strongestValForward) = GetStrongestPheromoneInRange(forwardLeftSensor, type, radius);
+        (Vector2 strongestPosRight, float strongestValRight) = GetStrongestPheromoneInRange(forwardLeftSensor, type, radius);
+
+        Vector2 strongestPos = strongestPosLeft;
+        float strongestVal = strongestValLeft;
+
+        if (strongestVal < strongestValForward)
+        {
+            strongestVal = strongestValForward;
+            strongestPos.x = strongestPosForward.x;
+            strongestPos.y = strongestPosForward.y;
+        }
+        if (strongestVal < strongestValRight)
+        {
+            strongestVal = strongestValRight;
+            strongestPos.x = strongestPosRight.x;
+            strongestPos.y = strongestPosRight.y;
+        }
+
+        return strongestPos;
+    }
+
+    private float GetPheromoneAt(int index, PheromoneType type)
+    {
         float intensity = 0;
         switch (type)
         {
@@ -155,6 +242,10 @@ public class PheromoneManager : MonoBehaviour
     private int GetPosFromVector(Vector2 position)
     {
         return Mathf.FloorToInt(position.y) * width + Mathf.FloorToInt(position.x);
+    }
+    private int GetIndexFromPos(int x, int y)
+    {
+        return x * width + y;
     }
 
     private float DecayPheromone(float baseDecayRate, float currIntensity)

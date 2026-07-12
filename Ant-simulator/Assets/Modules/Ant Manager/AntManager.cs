@@ -6,7 +6,7 @@ public class AntManager : MonoBehaviour
 {
     private List<AntNest> Nests = new List<AntNest>();
 
-    private GameManager gameManager = null;
+    private PheromoneManager perspectiveManager = null;
 
     private static AntManager antManager = null;
     public static AntManager GetAntManager { get { return antManager; } }
@@ -23,7 +23,7 @@ public class AntManager : MonoBehaviour
 
     void Start()
     {
-        gameManager = GameManager.GetGameManager; 
+        perspectiveManager = GameManager.GetGameManager.PheromoneManager; 
     }
 
     // Update is called once per frame
@@ -31,7 +31,6 @@ public class AntManager : MonoBehaviour
     {
         UpdateAntsPosition();
     }
-
 
     private void UpdateAntsPosition()
     {
@@ -51,20 +50,28 @@ public class AntManager : MonoBehaviour
 
     private void ChooseAntState(Ant ant)
     {
+        // We have found food.
         if (ant.haveFood)
         {
-            bool haveFoodPheromone;
+            ant.state = AntState.GoingToTheNest;
         }
+        //  We have not found food yet.
+        else
+        {
+            ant.targetPheromonePosition = perspectiveManager.GetStrongestPheromonePos(ant.position, ant.orientation, PheromoneType.Food);
 
-        // If we dont know where the food is and there is not pheromone path to follow - AntState.SearchingForFood
-
-        // If we have food but we dont know where the nest is - AntState.SearchingForNest
-
-        // If we dont have food but we have pheromone path to follow - AntState.FollowingFoodPheromone
-
-        // If we have food and have pheromone path to follow - AntState.FollowingHomePheromone
-
-        // If we dont have food, but we have pheromone path to follow and we need to go back to the nest - AntState.GoingToTheNest
+            // There is no food pheromon to follow
+            if (ant.targetPheromonePosition == Vector2.zero)
+            {
+                // If we dont know where the food is and there is not pheromone path to follow - AntState.SearchingForFood
+                ant.state = AntState.SearchingForFood;
+            }
+            else
+            {
+                // If we dont have food but we have pheromone path to follow - AntState.FollowingFoodPheromone
+                ant.state = AntState.FollowingFoodPheromone;
+            }
+        }
     }
 
     private void MoveAnt(Ant ant)
@@ -75,32 +82,29 @@ public class AntManager : MonoBehaviour
                 break;
             case AntState.SearchingForFood:
                 // Go in a random direction for a little then change direction with a few degrees and go for a little.
+                ant.position = ant.Forward * ant.movementSpeed * Time.deltaTime;
                 // Continue until a food is found or a pheromone for food is found.
                 break;
-            case AntState.SearchingForNest:
-                // If we have pheromone path to the nest, we follow it.
-                // If not, we go for a little in the general direction of the nest.
-                // After that, if the general direction of the nest is still the same, we change direction with a few degrees and go for a little again.
-                // If the general direction change, we change direction to match it.
-                // Repeat until ether we find the nest or a pheromone path that goes to it.
-                break;
+            //case AntState.SearchingForNest:
+            //    // If we have pheromone path to the nest, we follow it.
+            //    // If not, we go for a little in the general direction of the nest.
+            //    // After that, if the general direction of the nest is still the same, we change direction with a few degrees and go for a little again.
+            //    // If the general direction change, we change direction to match it.
+            //    // Repeat until ether we find the nest or a pheromone path that goes to it.
+            //    break;
             case AntState.GoingToTheNest:
-                FollowPheromones(ant);
+                
                 break;
             case AntState.FollowingFoodPheromone:
-                FollowPheromones(ant);
+                Vector2 pheromoneDirection = ant.targetPheromonePosition - ant.position;
+                ant.position = pheromoneDirection * ant.movementSpeed * Time.deltaTime;
                 break;
-            case AntState.FollowingHomePheromone:
-                FollowPheromones(ant);
-                break;
+            //case AntState.FollowingHomePheromone:
+            //    FollowPheromones(ant);
+            //    break;
             default:
                 break;
         }
-    }
-
-    private void FollowPheromones(Ant ant)
-    {
-        // Follow the pheromones to the objective.
     }
 
     public void AddNest()
