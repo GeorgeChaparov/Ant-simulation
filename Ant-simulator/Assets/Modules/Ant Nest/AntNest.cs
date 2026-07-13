@@ -1,55 +1,57 @@
 using System.Collections.Generic;
-using System;
 using UnityEngine;
 
 public class AntNest : MonoBehaviour
 {
-    private readonly List<Ant> ants;
+    [SerializeField]
+    private List<Ant> ants = new List<Ant>();
 
+    [SerializeField]
     private int maxAnts = 10;
 
+    [SerializeField]
     private float spawnRate = 1.0f;
 
     private float lastSpawn = 0;
 
-    private bool canSpawn = true;
-
     public List<Ant> Ants { get { return ants; } }
-    public bool CanSpawn { get { return canSpawn; } }
-
     public int MaxAnts { get { return maxAnts; } set { maxAnts = value; } }
     public float SpawnRate { get { return spawnRate; } set { spawnRate = value; } }
 
 
+    private void Start()
+    {
+        lastSpawn = spawnRate;
+    }
+
     private void Update()
     {
-        UpdateCanSpawn();
+        if (MaxAnts == ants.Count)
+        {
+            return;
+        }
+
+        if (Time.time - lastSpawn < SpawnRate)
+        {
+            return;
+        }
+
+        lastSpawn = Time.time;
+        SpawnAnt(new Ant(0, transform.position, new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized));
     }
 
-    private void UpdateCanSpawn()
+    public void SpawnAnt(Ant ant)
     {
-        if (!canSpawn) { return; }
-
-        float currTime = Time.deltaTime;
-
-        if (currTime - lastSpawn < spawnRate) { return; }
-
-        lastSpawn = currTime;
-    }
-
-    public void SpawnAnt()
-    {
-        ants.Add(new Ant());
+        ants.Add(ant);
     }
 
     public void RemoveAnt(int antIndex)
     {
         if (ants.Count >= antIndex)
         {
-            throw new Exception("Ant index does not exists!");
+            throw new System.Exception("Ant index does not exists!");
         }
 
         ants.RemoveAt(antIndex);
-        canSpawn = true;
     }
 }

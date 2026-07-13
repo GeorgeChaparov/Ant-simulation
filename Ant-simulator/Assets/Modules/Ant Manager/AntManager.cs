@@ -4,9 +4,15 @@ using UnityEngine.Rendering.UI;
 
 public class AntManager : MonoBehaviour
 {
-    private List<AntNest> Nests = new List<AntNest>();
 
-    private PheromoneManager perspectiveManager = null;
+    public delegate void NestAdded();
+    public event NestAdded OnNestAdded;
+    [SerializeField]
+    private List<AntNest> nests = new List<AntNest>();
+
+    public List<AntNest> Nests { get { return nests; } }
+
+    private PheromoneManager pheromoneManager = null;
 
     private static AntManager antManager = null;
     public static AntManager GetAntManager { get { return antManager; } }
@@ -23,32 +29,35 @@ public class AntManager : MonoBehaviour
 
     void Start()
     {
-        perspectiveManager = GameManager.GetGameManager.PheromoneManager; 
+        pheromoneManager = GameManager.GetGameManager.PheromoneManager; 
     }
 
     // Update is called once per frame
     void Update()
     {
-        UpdateAntsPosition();
+        UpdateAnts();
     }
 
-    private void UpdateAntsPosition()
+    private void UpdateAnts()
     {
-        for (int i = 0; i < Nests.Count; i++)
+        for (int i = 0; i < nests.Count; i++)
         {
-            AntNest Nest = Nests[i];
+            AntNest nest = nests[i];
 
-            for (int j = 0; j < Nest.Ants.Count; j++)
+            for (int j = 0; j < nest.Ants.Count; j++)
             {
-                Ant ant = Nest.Ants[j];
+                Ant ant = nest.Ants[j];
 
-                ChooseAntState(ant);
-                MoveAnt(ant);
+                ant = ChooseAntState(ant);
+                ant = ChooseOrientation(ant);
+                ant.Move();
+
+                nest.Ants[j] = ant;
             }
         }
     }
 
-    private void ChooseAntState(Ant ant)
+    private Ant ChooseAntState(Ant ant)
     {
         // We have found food.
         if (ant.haveFood)
@@ -58,7 +67,7 @@ public class AntManager : MonoBehaviour
         //  We have not found food yet.
         else
         {
-            ant.targetPheromonePosition = perspectiveManager.GetStrongestPheromonePos(ant.position, ant.orientation, PheromoneType.Food);
+            ant.targetPheromonePosition = pheromoneManager.GetStrongestPheromonePos(ant.position, ant.orientation, PheromoneType.Food);
 
             // There is no food pheromon to follow
             if (ant.targetPheromonePosition == Vector2.zero)
@@ -72,9 +81,10 @@ public class AntManager : MonoBehaviour
                 ant.state = AntState.FollowingFoodPheromone;
             }
         }
+        return ant;
     }
 
-    private void MoveAnt(Ant ant)
+    private Ant ChooseOrientation(Ant ant)
     {
         switch (ant.state)
         {
@@ -82,8 +92,22 @@ public class AntManager : MonoBehaviour
                 break;
             case AntState.SearchingForFood:
                 // Go in a random direction for a little then change direction with a few degrees and go for a little.
-                ant.position = ant.Forward * ant.movementSpeed * Time.deltaTime;
-                // Continue until a food is found or a pheromone for food is found.
+                Vector2 newOrientation = ant.orientation;
+
+                if (Time.time - ant.lastRandomRotation > ant.randomRotationfrequency)
+                {
+                    ant.lastRandomRotation = Time.time;
+                    float rotDeg = Random.Range(10, 45);
+                    float ran = Random.value;
+                    if (ran >= 0.5)
+                    {
+                        rotDeg = -rotDeg;
+                    }
+
+                    newOrientation = Utils.Rotate(newOrientation, rotDeg);
+                }
+
+                ant.orientation = newOrientation;
                 break;
             //case AntState.SearchingForNest:
             //    // If we have pheromone path to the nest, we follow it.
@@ -105,15 +129,18 @@ public class AntManager : MonoBehaviour
             default:
                 break;
         }
+
+        return ant;
     }
 
-    public void AddNest()
+    public void AddNest(AntNest nest)
     {
-        Nests.Add(new AntNest());
+        nests.Add(nest);
+        OnNestAdded();
     }
 
     public void RemoveNest(int nestIndex)
     {
-        Nests.RemoveAt(nestIndex);
+        nests.RemoveAt(nestIndex);
     }
 }

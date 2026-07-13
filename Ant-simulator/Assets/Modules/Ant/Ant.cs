@@ -1,5 +1,7 @@
 using NUnit.Framework;
 
+using Unity.VisualScripting;
+
 using UnityEngine;
 
 
@@ -38,9 +40,13 @@ public struct Ant
 {
     public Vector2 position;
     public Vector2 targetPheromonePosition = Vector2.zero;
+
     public Vector2 orientation;
+    public float lastRandomRotation = 0;
+    public readonly float randomRotationfrequency = Random.Range(3, 5);
+
     public float movementSpeed;
-    public Vector2 Forward => position + orientation;
+    public readonly Vector2 Forward => (position + orientation).normalized;
 
     /// <summary>
     /// The general direction to the nest.
@@ -85,8 +91,13 @@ public struct Ant
 
         this.nestPosition = pos;
 
-        this.movementSpeed = Random.value;
+        this.movementSpeed = Random.Range(2, 6);
 
         // Might add different genome for each ant and so different proterties for each pheromone of each ant in the future.
+    }
+
+    public void Move()
+    {
+        position += movementSpeed * Time.deltaTime * orientation;
     }
 }

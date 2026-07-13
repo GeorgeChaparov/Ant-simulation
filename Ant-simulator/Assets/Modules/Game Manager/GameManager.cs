@@ -2,7 +2,11 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
-    public PheromoneManager PheromoneManager { get; }
+    private static PheromoneManager pheromoneManager = null;
+    public PheromoneManager PheromoneManager { get { return pheromoneManager; } }
+
+    private static AntManager antManager = null;
+    public AntManager AntManager { get { return antManager; } }
 
     private static GameManager gameManager = null;
     public static GameManager GetGameManager { get { return gameManager; } }
@@ -17,14 +21,21 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void Start()
+    private void OnValidate()
     {
-       
+        pheromoneManager = FindAnyObjectByType<PheromoneManager>();
+        antManager = FindAnyObjectByType<AntManager>();
     }
 
     // Update is called once per frame
     void Update()
     {
+        
+    }
+
+
+    private void UpdateVizualizerNestList()
+    { 
         
     }
 }
