@@ -14,4 +14,9 @@ public class Utils
             orientation.x * sin + orientation.y * cos
         );
     }
+
+    public static bool IsOutOfBounds(Vector2 pos)
+    {
+        throw new System.NotImplementedException();
+    }
 }

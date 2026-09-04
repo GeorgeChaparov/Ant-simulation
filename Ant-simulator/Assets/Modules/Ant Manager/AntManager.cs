@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+
 using UnityEngine;
 using UnityEngine.Rendering.UI;
+using UnityEngine.UIElements;
 
 public class AntManager : MonoBehaviour
 {
@@ -50,36 +52,62 @@ public class AntManager : MonoBehaviour
 
                 ant = ChooseAntState(ant);
                 ant = ChooseOrientation(ant);
-                ant.Move();
+
+                Vector2 direction = ant.movementSpeed * Time.deltaTime * ant.orientation;
+                Vector2 newPos = ant.position + direction;
+
+                if (Utils.IsOutOfBounds(newPos))
+                {
+                    newPos = ant.position - direction;
+                }
+
+                ant.Move(newPos);
 
                 nest.Ants[j] = ant;
             }
         }
     }
 
+    //private void ChackSensors(Ant ant)
+    //{
+    //    /// Check for food source
+    //    ant.foodSourcePosition = foodManager.GetFoodAt(ant.position, ant.orientation, PheromoneType.Food);
+    //    ant.foundFoodSource = ant.foodSourcePosition != Vector2.zero;
+
+    //    /// Check for food pheromones
+    //    ant.foodPheromonePosition = pheromoneManager.GetStrongestPheromonePos(ant.position, ant.orientation, PheromoneType.Food);
+    //    ant.foundFoodPheromone = ant.foodPheromonePosition != Vector2.zero;
+    //}
+
     private Ant ChooseAntState(Ant ant)
     {
-        // We have found food.
+        // We have food.
         if (ant.haveFood)
         {
             ant.state = AntState.GoingToTheNest;
         }
-        //  We have not found food yet.
+        //  We do not have food yet.
         else
         {
-            ant.targetPheromonePosition = pheromoneManager.GetStrongestPheromonePos(ant.position, ant.orientation, PheromoneType.Food);
+            if (ant.foundFoodSource)
+            {
+                ant.targetPosition = ant.foodPheromonePosition;
+                ant.state = AntState.GoingTowardsFood;
 
-            // There is no food pheromon to follow
-            if (ant.targetPheromonePosition == Vector2.zero)
-            {
-                // If we dont know where the food is and there is not pheromone path to follow - AntState.SearchingForFood
-                ant.state = AntState.SearchingForFood;
+                return ant;
             }
-            else
+
+            if (ant.foundFoodPheromone)
             {
-                // If we dont have food but we have pheromone path to follow - AntState.FollowingFoodPheromone
+                // We dont have food source, but we have pheromone path to follow - AntState.FollowingFoodPheromone
+                ant.targetPosition = ant.foodPheromonePosition;
                 ant.state = AntState.FollowingFoodPheromone;
+
+                return ant;
             }
+
+            // We dont have food source or food pheromone to follow - AntState.SearchingForFood
+            ant.state = AntState.SearchingForFood;
         }
         return ant;
     }
@@ -120,8 +148,8 @@ public class AntManager : MonoBehaviour
                 
                 break;
             case AntState.FollowingFoodPheromone:
-                Vector2 pheromoneDirection = ant.targetPheromonePosition - ant.position;
-                ant.position = pheromoneDirection * ant.movementSpeed * Time.deltaTime;
+                Vector2 pheromoneDirection = ant.targetPosition - ant.position;
+                ant.position = ant.movementSpeed * Time.deltaTime * pheromoneDirection;
                 break;
             //case AntState.FollowingHomePheromone:
             //    FollowPheromones(ant);

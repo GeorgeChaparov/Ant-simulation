@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 
+using Unity.VisualScripting;
+
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 public class PheromoneManager : MonoBehaviour
 {
@@ -101,6 +104,51 @@ public class PheromoneManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Searches for the strongest pheromone around three sensors positioned
+    /// relative to the given orientation.
+    /// </summary>
+    /// <param name="position">Current position</param>
+    /// <param name="orientation"></param>
+    /// <param name="type">The type of pheremone</param>
+    /// <param name="radius">The radius around each sensor that will be searched.</param>
+    /// <param name="angle">The angle of the sensors from the forward orientation.</param>
+    /// <param name="sensorsDistance">How far are the sensors form the position.</param>
+    /// <returns>The position of the stronges pheromone in the given radius around the sensors, as 2D vector. 
+    /// If the pheromone is not found, it returns Vector2.zero.</returns>
+    public Vector2 GetStrongestPheromonePos(Vector2 position, Vector2 orientation, int radius = 3, float angle = 30, float sensorsDistance = 3)
+    {
+        Vector2[] sensorsOrientation = { Utils.Rotate(orientation, -angle), orientation, Utils.Rotate(orientation, angle) };
+
+        (Vector2 pos, float val)[] foundPheromones = new (Vector2 strongestPosLeft, float strongestValLeft)[3];
+
+        for (int i = 0; i < sensorsOrientation.Length; i++)
+        {
+            Vector2 sensorOrientation = sensorsOrientation[i];
+
+            Vector2 sensorPos = position + sensorOrientation * sensorsDistance;
+
+            foundPheromones[i] = GetStrongestPheromoneInRange(sensorPos, PheromoneType.Food, radius);
+        }
+
+        Vector2 strongestPos = foundPheromones[0].pos;
+        float strongestVal = foundPheromones[0].val;
+
+        if (strongestVal < foundPheromones[1].val)
+        {
+            strongestVal = foundPheromones[1].val;
+            strongestPos.x = foundPheromones[1].pos.x;
+            strongestPos.y = foundPheromones[1].pos.y;
+        }
+        if (strongestVal < foundPheromones[2].val)
+        {
+            strongestPos.x = foundPheromones[2].pos.x;
+            strongestPos.y = foundPheromones[2].pos.y;
+        }
+
+        return strongestPos;
+    }
+
     private (Vector2, float) GetStrongestPheromoneInRange(Vector2 position, PheromoneType type, int radius = 3)
     {
         int x = Mathf.FloorToInt(position.x);
@@ -144,49 +192,6 @@ public class PheromoneManager : MonoBehaviour
             return (Vector2.zero, 0);
 
         return ((strongestPos - position).normalized, strongestVal);
-    }
-
-
-    /// <summary>
-    /// Searches for the strongest pheromone around three sensors positioned
-    /// relative to the given orientation.
-    /// </summary>
-    /// <param name="position">Current position</param>
-    /// <param name="orientation"></param>
-    /// <param name="type">The type of pheremone</param>
-    /// <param name="radius">The radius around each sensor that will be searched.</param>
-    /// <param name="angle">The angle of the sensors from the forward orientation.</param>
-    /// <param name="sensorsDistance">How far are the sensors form the position.</param>
-    /// <returns>The position of the stronges pheromone in the given radius around the sensors, as 2D vector. 
-    /// If the pheromone is not found, it returns Vector2.zero.</returns>
-    public Vector2 GetStrongestPheromonePos(Vector2 position, Vector2 orientation, PheromoneType type, int radius = 3, float angle = 30, float sensorsDistance = 3)
-    {
-        Vector2[] sensorsPos = new Vector2[3];
-        Vector2 forwardLeftSensor = position + Utils.Rotate(orientation, -angle) * sensorsDistance;
-        Vector2 forwardSensor = position + orientation * sensorsDistance;
-        Vector2 forwardRightSensor = position + Utils.Rotate(orientation, angle) * sensorsDistance;
-
-        (Vector2 strongestPosLeft, float strongestValLeft) = GetStrongestPheromoneInRange(forwardLeftSensor, type, radius);
-        (Vector2 strongestPosForward, float strongestValForward) = GetStrongestPheromoneInRange(forwardLeftSensor, type, radius);
-        (Vector2 strongestPosRight, float strongestValRight) = GetStrongestPheromoneInRange(forwardLeftSensor, type, radius);
-
-        Vector2 strongestPos = strongestPosLeft;
-        float strongestVal = strongestValLeft;
-
-        if (strongestVal < strongestValForward)
-        {
-            strongestVal = strongestValForward;
-            strongestPos.x = strongestPosForward.x;
-            strongestPos.y = strongestPosForward.y;
-        }
-        if (strongestVal < strongestValRight)
-        {
-            strongestVal = strongestValRight;
-            strongestPos.x = strongestPosRight.x;
-            strongestPos.y = strongestPosRight.y;
-        }
-
-        return strongestPos;
     }
 
     private float GetPheromoneAt(int index, PheromoneType type)

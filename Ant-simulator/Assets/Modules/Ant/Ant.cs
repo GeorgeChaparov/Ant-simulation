@@ -34,12 +34,16 @@ public enum AntState
     /// The ant does not follow established path to the nest. Its "lost".
     /// </summary>
     //SearchingForNest = 5,
+    /// <summary>
+    /// Sensors have detected food and we are going towards it.
+    /// </summary>
+    GoingTowardsFood = 4,
 }
 
 public struct Ant
 {
     public Vector2 position;
-    public Vector2 targetPheromonePosition = Vector2.zero;
+    public Vector2 targetPosition = Vector2.zero;
 
     public Vector2 orientation;
     public float lastRandomRotation = 0;
@@ -70,6 +74,12 @@ public struct Ant
     public bool haveFood = false;
     public float foodMemoryStrength = 0;
 
+    public bool foundFoodSource = false;
+    public Vector2 foodSourcePosition = Vector2.zero;
+
+    public bool foundFoodPheromone = false;
+    public Vector2 foodPheromonePosition = Vector2.zero;
+
     /// <summary>
     /// The number of blocks around the ant that are gonna be searched when searching for pheromones.
     /// Can be changed to FOV in the future.
@@ -96,8 +106,8 @@ public struct Ant
         // Might add different genome for each ant and so different proterties for each pheromone of each ant in the future.
     }
 
-    public void Move()
+    public void Move(Vector2 newPos)
     {
-        position += movementSpeed * Time.deltaTime * orientation;
+        position = newPos;
     }
 }
