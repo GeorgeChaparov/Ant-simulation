@@ -6,7 +6,6 @@ using UnityEngine;
 
 public class Visualization : MonoBehaviour
 {
-    private GameManager gameManager = null;
     private static Visualization visualization = null;
     public static Visualization GetVisualization { get { return visualization; } }
     private AntNest[] antNests = new AntNest[0];
@@ -23,9 +22,8 @@ public class Visualization : MonoBehaviour
 
     void Start()
     {
-        gameManager = FindAnyObjectByType<GameManager>();
         UpdateNests();
-        gameManager.AntManager.OnNestAdded += UpdateNests;
+        AntManager.Instance.OnNestAdded += UpdateNests;
     }
 
     private void OnDrawGizmos()
@@ -35,7 +33,7 @@ public class Visualization : MonoBehaviour
 
     private void UpdateNests()
     {
-        antNests = gameManager.AntManager.Nests.ToArray();
+        antNests = AntManager.Instance.Nests.ToArray();
     }
 
     private void Draw()

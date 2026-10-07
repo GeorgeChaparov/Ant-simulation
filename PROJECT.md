@@ -31,6 +31,6 @@ I did not like the way the architecture was created because the GameManager clas
 
 > 1. [x] Implement the method that checks if we are in bounds of the food and pheromone grid. Its under Utils.IsOutOfBounds()
 > 2. [x] Use the method to stop the ants from leaving the grid area.
-> 3. [] Add a separet sensor class for ants that can detect whatever needed.
+> 3. [x] Add a separet sensor class for ants that can detect whatever needed.
 > 4. [] Add food into the mix.
-> 5. [] Delete the GameManager class because it haves too much cupling.
+> 5. [x] Cleane the GameManager class because it haves too much cupling.

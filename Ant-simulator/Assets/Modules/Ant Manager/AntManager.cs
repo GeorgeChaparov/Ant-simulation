@@ -14,8 +14,6 @@ public class AntManager : MonoBehaviour
 
     public List<AntNest> Nests { get { return nests; } }
 
-    private PheromoneManager pheromoneManager = null;
-
     private static AntManager instance = null;
     public static AntManager Instance { get { return instance; } }
 
@@ -27,11 +25,6 @@ public class AntManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
-    }
-
-    void Start()
-    {
-        pheromoneManager = GameManager.Instance.PheromoneManager; 
     }
 
     // Update is called once per frame
@@ -76,7 +69,7 @@ public class AntManager : MonoBehaviour
         //ant.foundFoodSource = ant.foodSourcePosition != Vector2.zero;
 
         /// Check for food pheromones
-        ant.foodPheromonePosition = pheromoneManager.GetStrongestPheromonePos(ant.sensors);
+        ant.foodPheromonePosition = PheromoneManager.Instance.GetStrongestPheromonePos(ant.sensors);
         ant.foundFoodPheromone = ant.foodPheromonePosition != Vector2.zero;
     }
 
