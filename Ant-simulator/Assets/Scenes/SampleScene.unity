@@ -194,6 +194,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e7d6182f1847e847b1dce760ceac5ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Visualization
+  foodSources: []
 --- !u!4 &439903259
 Transform:
   m_ObjectHideFlags: 0
@@ -346,6 +347,52 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &596079131
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 596079133}
+  - component: {fileID: 596079132}
+  m_Layer: 0
+  m_Name: FoodSourceManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &596079132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 596079131}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 891295354426c744b970cc076edf0f08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FoodSourceManager
+  foodSources:
+  - {fileID: 1880356032}
+--- !u!4 &596079133
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 596079131}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -459,7 +506,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a20250636fe3d5246b8a57138467d892, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AntNest
-  maxAnts: 10000
+  maxAnts: 100
   spawnRate: 0.02
 --- !u!4 &898662539
 Transform:
@@ -470,7 +517,7 @@ Transform:
   m_GameObject: {fileID: 898662537}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 10, y: 10, z: 0}
+  m_LocalPosition: {x: 100, y: 100, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -505,6 +552,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7f48bfa5a9e7934e841851d3c94ab76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  gridWidth: 200
+  gridHeight: 200
 --- !u!4 &1101579461
 Transform:
   m_ObjectHideFlags: 0
@@ -515,6 +564,52 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1880356031
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1880356033}
+  - component: {fileID: 1880356032}
+  m_Layer: 0
+  m_Name: FoodSource
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1880356032
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1880356031}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62caf299dcc56c345b30ada886375011, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FoodSource
+  radius: 20
+  amount: 5
+--- !u!4 &1880356033
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1880356031}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 170, y: 20, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -549,11 +644,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e29764d55e1f324f83e93a7388f166b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PheromoneManager
-  width: 10
-  height: 10
   updateInterval: 0.5
   foodPheromoneDecayRate: 1
-  nestPheromoneDecayRate: 1
 --- !u!4 &2009642947
 Transform:
   m_ObjectHideFlags: 0
@@ -580,3 +672,5 @@ SceneRoots:
   - {fileID: 439903259}
   - {fileID: 1101579461}
   - {fileID: 2009642947}
+  - {fileID: 1880356033}
+  - {fileID: 596079133}

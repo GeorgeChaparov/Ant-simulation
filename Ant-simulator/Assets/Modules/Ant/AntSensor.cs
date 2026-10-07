@@ -4,11 +4,13 @@ using UnityEngine.UIElements;
 public class AntSensor
 {
     Vector2 position;
-
     public Vector2 Position => position;
+
     Vector2 orientation;
+
     int radius = 3;
     public int Radius => radius;
+
     float angle = 30;
     float sensorsDistance = 3;
 

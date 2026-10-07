@@ -10,14 +10,14 @@ In the end, the user should be able to inspect ants and there stats such as time
 - [x] Visualizatios of ants
 - [x] Ants spawning
 - [ ] Logic for returning to home after finding food
-- [ ] Food finding.
+- [x] Food finding.
 
 ## 3. Architecture
 
 ## 4. Problems
 
 - Ants can leave the pheremone grid - Fixed
-- GameManager class is becoming a Monolith.
+- GameManager class is becoming a Monolith - Fixed
 
 ## 5. Last known task
 I was tring to add the detection of the food.</br>
@@ -34,3 +34,8 @@ I did not like the way the architecture was created because the GameManager clas
 > 3. [x] Add a separet sensor class for ants that can detect whatever needed.
 > 4. [] Add food into the mix.
 > 5. [x] Cleane the GameManager class because it haves too much cupling.
+
+## 7. TODO
+> 1. Add random noise to the nest vector in AntManager.UpdateNestDirAproximatio()
+> 2. Calculate the home vector confidence.
+> 3. Add create the algorithm for returning to the nest by normalizing the home vector and then adding random noise based on the home vector confidence. 

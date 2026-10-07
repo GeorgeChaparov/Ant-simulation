@@ -11,10 +11,9 @@ using static UnityEditor.ShaderGraph.Internal.KeywordDependentCollection;
 
 public class PheromoneManager : MonoBehaviour
 {
-    [SerializeField]
     private int width = 10;
-    [SerializeField]
     private int height = 10;
+    private int gridSize = 0;
 
     [SerializeField]
     [Tooltip("How often should the pheromones update.")]
@@ -36,8 +35,6 @@ public class PheromoneManager : MonoBehaviour
     /// Stores the last time each cell was updated. Will be removed in favorer of lazy decay as needed.
     /// </summary>
     private float[] lastUpdate;
-
-    private int gridSize = 0;
 
     private static PheromoneManager instance = null;
     public static PheromoneManager Instance { get { return instance; } }
@@ -79,7 +76,7 @@ public class PheromoneManager : MonoBehaviour
 
     public void DepositPheromoneOn(Vector2 position, PheromoneSetting pheromoneSettings, PheromoneType pheromoneType)
     {
-        int index = Utils.GetPosFromVector(position);
+        int index = Utils.GetIndexFromVector(position);
 
         switch (pheromoneType)
         {

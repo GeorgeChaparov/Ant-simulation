@@ -56,7 +56,7 @@ public struct Ant
     /// <summary>
     /// The general direction to the nest.
     /// </summary>
-    public Directions nestDirection = Directions.None;
+    public Vector2 nestVector = Vector2.zero;
     /// <summary>
     /// The position of the nest. Its used to get the direction of the nest and never directly for path finding.
     /// Its equal to the position in the beginning, because the nest is the thing that "spawns" the ant.
@@ -69,7 +69,8 @@ public struct Ant
     /// <summary>
     /// How confident the ant is in its estimate of the nest direction.
     /// </summary>
-    public float nestDirectionConfidence = 0.5f;
+    public float nestDirectionConfidence = 1f;
+    public float distanceTraveledFromNest = 0f;
 
     public AntSensor[] sensors;
 
@@ -84,16 +85,16 @@ public struct Ant
     public Vector2 foodPheromonePosition = Vector2.zero;
 
     /// <summary>
-    /// The number of blocks around the ant that are gonna be searched when searching for pheromones.
+    /// The number of blocks around the ant's sensor that are gonna be searched when searching for pheromones.
     /// Can be changed to FOV in the future.
     /// </summary>
-    public readonly int viewRadius = 3;
+    public readonly int sensorRadius = 3;
 
     // Metrics
     public int id;
     public int age = 0;
     public int tripsCompleted = 0;
-    public int distanceTraveled = 0;
+    public float totalDistanceTraveled = 0;
 
     public Ant(int id, Vector2 pos, Vector2 orientation)
     {
@@ -107,14 +108,15 @@ public struct Ant
         this.movementSpeed = Random.Range(2, 6);
 
         this.sensors = new AntSensor[2];
-        sensors[0] = new AntSensor(pos, orientation, 30, 3);
-        sensors[1] = new AntSensor(pos, orientation, -30, 3);
+        sensors[0] = new AntSensor(pos, orientation, 30, sensorRadius);
+        sensors[1] = new AntSensor(pos, orientation, -30, sensorRadius);
 
-        // Might add different genome for each ant and so different proterties for each pheromone of each ant in the future.
+        // Might add different genome for each ant and so different properties for each pheromone of each ant in the future.
     }
 
     public void Move(Vector2 newPos)
     {
+        totalDistanceTraveled += (position - newPos).magnitude;
         position = newPos;
 
         foreach (var sensor in sensors)

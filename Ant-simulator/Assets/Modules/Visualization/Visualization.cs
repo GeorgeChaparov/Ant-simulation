@@ -1,29 +1,30 @@
 using System.Collections.Generic;
 
-using Unity.VisualScripting;
-
 using UnityEngine;
 
 public class Visualization : MonoBehaviour
 {
-    private static Visualization visualization = null;
-    public static Visualization GetVisualization { get { return visualization; } }
+    private static Visualization instance = null;
+    public static Visualization Instance { get { return instance; } }
     private AntNest[] antNests = new AntNest[0];
-        
+    public FoodSource[] foodSources = new FoodSource[0];
+
     private void Awake()
     {
-        visualization = FindAnyObjectByType<Visualization>();
+        instance = FindAnyObjectByType<Visualization>();
 
-        if (visualization.gameObject != gameObject)
+        if (instance.gameObject != gameObject)
         {
             Destroy(gameObject);
         }
     }
 
-    void Start()
+    public void OnSimulationInitialize()
     {
         UpdateNests();
         AntManager.Instance.OnNestAdded += UpdateNests;
+        UpdateFoodSources();
+        FoodSourceManager.Instance.OnFoodSourceAdded += UpdateFoodSources;
     }
 
     private void OnDrawGizmos()
@@ -34,6 +35,11 @@ public class Visualization : MonoBehaviour
     private void UpdateNests()
     {
         antNests = AntManager.Instance.Nests.ToArray();
+    }
+
+    private void UpdateFoodSources()
+    {
+        foodSources = FoodSourceManager.Instance.FoodSources.ToArray();
     }
 
     private void Draw()
@@ -48,7 +54,21 @@ public class Visualization : MonoBehaviour
             {
                 Gizmos.color = Color.red;
                 Gizmos.DrawSphere(ant.position, 1);
+
+                foreach (var sensor in ant.sensors)
+                {
+                    Gizmos.color = Color.black;
+                    Gizmos.DrawSphere(sensor.Position, sensor.Radius);
+                }
             }
+        }
+
+        foreach (var foodSource in foodSources)
+        {
+            Gizmos.color = Color.orange;
+            Debug.Log(foodSource.Position);
+            Debug.Log(foodSource.Radius);
+            Gizmos.DrawSphere(foodSource.Position, foodSource.Radius);
         }
     }
 }

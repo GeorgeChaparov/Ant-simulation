@@ -31,7 +31,7 @@ public class Utils
         return false;
     }
 
-    public static int GetPosFromVector(Vector2 position)
+    public static int GetIndexFromVector(Vector2 position)
     {
         return Mathf.FloorToInt(position.y) * GameManager.Instance.gridWidth + Mathf.FloorToInt(position.x);
     }

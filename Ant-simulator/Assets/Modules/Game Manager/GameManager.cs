@@ -7,6 +7,8 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     public int gridHeight = 10;
 
+    public delegate void Initialized();
+    public Initialized OnInitialized;
 
     private static GameManager instance = null;
     public static GameManager Instance { get { return instance; } }
@@ -20,7 +22,15 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
 
+        OnInitialized += Visualization.Instance.OnSimulationInitialize;
+    }
+
+    private void Start()
+    {
         PheromoneManager.Instance.Init(gridWidth, gridHeight);
+        FoodSourceManager.Instance.Init(gridWidth, gridHeight);
+
+        OnInitialized.Invoke();
     }
 
     private void UpdateVizualizerNestList()

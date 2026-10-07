@@ -1,4 +1,8 @@
+using NUnit.Framework.Internal;
+
 using System.Collections.Generic;
+
+using Unity.VisualScripting;
 
 using UnityEngine;
 using UnityEngine.Rendering.UI;
@@ -42,35 +46,60 @@ public class AntManager : MonoBehaviour
             for (int j = 0; j < nest.Ants.Count; j++)
             {
                 Ant ant = nest.Ants[j];
+                Vector2 lastPos = ant.position;
 
-                ant = ChooseAntState(ant);
-                ant = ChooseOrientation(ant);
-
-                Vector2 direction = ant.movementSpeed * Time.deltaTime * ant.orientation;
-                Vector2 newPos = ant.position + direction;
-
-                if (Utils.IsOutOfBounds(newPos))
-                {
-                    newPos = ant.position - direction;
-                    ant.orientation = -ant.orientation;
-                }
-
-                ant.Move(newPos);
+                ant = Move(ant);
+                ant = UpdateNestDirAproximatio(ant, lastPos);
 
                 nest.Ants[j] = ant;
             }
         }
     }
 
-    private void ChackSensors(Ant ant)
+    private Ant Move(Ant ant)
+    {
+        ant = ChooseAntState(ant);
+        ant = ChooseOrientation(ant);
+
+        Vector2 direction = ant.movementSpeed * Time.deltaTime * ant.orientation;
+        Vector2 newPos = ant.position + direction;
+
+        if (Utils.IsOutOfBounds(newPos))
+        {
+            newPos = ant.position - direction;
+            ant.orientation = -ant.orientation;
+        }
+
+        ant.Move(newPos);
+
+        return ant;
+    }
+
+    private Ant UpdateNestDirAproximatio(Ant ant, Vector2 lastPos)
+    {
+        if (ant.state == AntState.GoingToTheNest)
+        {
+            return ant;
+        }
+
+        Vector2 movement = (lastPos - ant.position);
+        ant.distanceTraveledFromNest += movement.magnitude;
+        ant.nestVector -= movement;
+
+        return ant;
+    }
+
+    private Ant ChackSensors(Ant ant)
     {
         /// Check for food source
-        //ant.foodSourcePosition = foodManager.GetFoodAt(ant.position, ant.orientation, PheromoneType.Food);
-        //ant.foundFoodSource = ant.foodSourcePosition != Vector2.zero;
+        ant.foodSourcePosition = FoodSourceManager.Instance.GetFoodInRadius(ant.sensors);
+        ant.foundFoodSource = ant.foodSourcePosition != Vector2.zero;
 
         /// Check for food pheromones
         ant.foodPheromonePosition = PheromoneManager.Instance.GetStrongestPheromonePos(ant.sensors);
         ant.foundFoodPheromone = ant.foodPheromonePosition != Vector2.zero;
+
+        return ant;
     }
 
     private Ant ChooseAntState(Ant ant)
@@ -83,11 +112,21 @@ public class AntManager : MonoBehaviour
         //  We do not have food yet.
         else
         {
-            ChackSensors(ant);
+            if (ant.state == AntState.GoingTowardsFood)
+            {
+                if ((ant.position - ant.foodSourcePosition).sqrMagnitude < 2 )
+                {
+                    ant.haveFood = true;
+                    FoodSourceManager.Instance.RemoveFoodAt(ant.foodSourcePosition, 1);
+                }
+                return ant;
+            }
+
+            ant = ChackSensors(ant);
 
             if (ant.foundFoodSource)
             {
-                ant.targetPosition = ant.foodPheromonePosition;
+                ant.targetPosition = ant.foodSourcePosition;
                 ant.state = AntState.GoingTowardsFood;
 
                 return ant;
@@ -133,6 +172,11 @@ public class AntManager : MonoBehaviour
 
                 ant.orientation = newOrientation;
                 break;
+            case AntState.GoingTowardsFood:
+                Vector2 foodDirection = ant.targetPosition - ant.position;
+
+                ant.orientation = foodDirection.normalized;
+                break;
             //case AntState.SearchingForNest:
             //    // If we have pheromone path to the nest, we follow it.
             //    // If not, we go for a little in the general direction of the nest.
@@ -141,7 +185,7 @@ public class AntManager : MonoBehaviour
             //    // Repeat until ether we find the nest or a pheromone path that goes to it.
             //    break;
             case AntState.GoingToTheNest:
-                
+                int a = 2;
                 break;
             case AntState.FollowingFoodPheromone:
                 Vector2 pheromoneDirection = ant.targetPosition - ant.position;
