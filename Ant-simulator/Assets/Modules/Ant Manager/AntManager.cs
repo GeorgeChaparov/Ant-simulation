@@ -16,14 +16,14 @@ public class AntManager : MonoBehaviour
 
     private PheromoneManager pheromoneManager = null;
 
-    private static AntManager antManager = null;
-    public static AntManager GetAntManager { get { return antManager; } }
+    private static AntManager instance = null;
+    public static AntManager Instance { get { return instance; } }
 
     private void Awake()
     {
-        antManager = FindAnyObjectByType<AntManager>();
+        instance = FindAnyObjectByType<AntManager>();
 
-        if (antManager.gameObject != gameObject)
+        if (instance.gameObject != gameObject)
         {
             Destroy(gameObject);
         }
@@ -31,7 +31,7 @@ public class AntManager : MonoBehaviour
 
     void Start()
     {
-        pheromoneManager = GameManager.GetGameManager.PheromoneManager; 
+        pheromoneManager = GameManager.Instance.PheromoneManager; 
     }
 
     // Update is called once per frame
@@ -59,6 +59,7 @@ public class AntManager : MonoBehaviour
                 if (Utils.IsOutOfBounds(newPos))
                 {
                     newPos = ant.position - direction;
+                    ant.orientation = -ant.orientation;
                 }
 
                 ant.Move(newPos);
@@ -68,16 +69,16 @@ public class AntManager : MonoBehaviour
         }
     }
 
-    //private void ChackSensors(Ant ant)
-    //{
-    //    /// Check for food source
-    //    ant.foodSourcePosition = foodManager.GetFoodAt(ant.position, ant.orientation, PheromoneType.Food);
-    //    ant.foundFoodSource = ant.foodSourcePosition != Vector2.zero;
+    private void ChackSensors(Ant ant)
+    {
+        /// Check for food source
+        //ant.foodSourcePosition = foodManager.GetFoodAt(ant.position, ant.orientation, PheromoneType.Food);
+        //ant.foundFoodSource = ant.foodSourcePosition != Vector2.zero;
 
-    //    /// Check for food pheromones
-    //    ant.foodPheromonePosition = pheromoneManager.GetStrongestPheromonePos(ant.position, ant.orientation, PheromoneType.Food);
-    //    ant.foundFoodPheromone = ant.foodPheromonePosition != Vector2.zero;
-    //}
+        /// Check for food pheromones
+        ant.foodPheromonePosition = pheromoneManager.GetStrongestPheromonePos(ant.sensors);
+        ant.foundFoodPheromone = ant.foodPheromonePosition != Vector2.zero;
+    }
 
     private Ant ChooseAntState(Ant ant)
     {
@@ -89,6 +90,8 @@ public class AntManager : MonoBehaviour
         //  We do not have food yet.
         else
         {
+            ChackSensors(ant);
+
             if (ant.foundFoodSource)
             {
                 ant.targetPosition = ant.foodPheromonePosition;
@@ -122,12 +125,12 @@ public class AntManager : MonoBehaviour
                 // Go in a random direction for a little then change direction with a few degrees and go for a little.
                 Vector2 newOrientation = ant.orientation;
 
-                if (Time.time - ant.lastRandomRotation > ant.randomRotationfrequency)
+                if (Time.time - ant.lastRandomRotation > ant.randomRotationFrequency)
                 {
                     ant.lastRandomRotation = Time.time;
                     float rotDeg = Random.Range(10, 45);
-                    float ran = Random.value;
-                    if (ran >= 0.5)
+                    float random = Random.value;
+                    if (random >= 0.5)
                     {
                         rotDeg = -rotDeg;
                     }

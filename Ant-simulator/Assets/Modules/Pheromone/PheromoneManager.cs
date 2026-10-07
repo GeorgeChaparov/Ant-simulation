@@ -7,6 +7,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
+using static UnityEditor.ShaderGraph.Internal.KeywordDependentCollection;
+
 public class PheromoneManager : MonoBehaviour
 {
     [SerializeField]
@@ -23,12 +25,7 @@ public class PheromoneManager : MonoBehaviour
     [Tooltip("How fast should the pheromones for food decay.")]
     private float foodPheromoneDecayRate = 1f;
 
-    [SerializeField]
-    [Tooltip("How fast should the pheromones for the nest decay.")]
-    private float nestPheromoneDecayRate = 1f;
-
     private float[] foodIntensity;
-    private float[] nestIntensity;
 
     /// <summary>
     /// Used to check which cells have any pheromones in them. Will be changed with lazy decay as needed.
@@ -36,40 +33,22 @@ public class PheromoneManager : MonoBehaviour
     private HashSet<int> activeCells;
 
     /// <summary>
-    /// Stores the last time each cell was updated. Will be removed in favoure of lazy decay as needed.
+    /// Stores the last time each cell was updated. Will be removed in favorer of lazy decay as needed.
     /// </summary>
     private float[] lastUpdate;
 
     private int gridSize = 0;
 
-    private static PheromoneManager pheromoneManager = null;
-    public static PheromoneManager GetPheromoneManager { get { return pheromoneManager; } }
+    private static PheromoneManager instance = null;
+    public static PheromoneManager Instance { get { return instance; } }
 
     private void Awake()
     {
-        pheromoneManager = FindAnyObjectByType<PheromoneManager>();
+        instance = FindAnyObjectByType<PheromoneManager>();
 
-        if (pheromoneManager.gameObject != gameObject)
+        if (instance.gameObject != gameObject)
         {
             Destroy(gameObject);
-        }
-    }
-
-    void Start()
-    {
-        gridSize = width * height;
-        foodIntensity = new float[gridSize];
-        nestIntensity = new float[gridSize];
-
-        activeCells = new HashSet<int>();
-        lastUpdate = new float[gridSize];
-
-        for (int i = 0; i < gridSize; i++)
-        {
-            foodIntensity[i] = 0;
-            nestIntensity[i] = 0;
-
-            lastUpdate[i] = 0;
         }
     }
 
@@ -79,9 +58,28 @@ public class PheromoneManager : MonoBehaviour
         UpdatePheromones();
     }
 
+    public void Init(int gridWidth, int gridHeight)
+    { 
+        width = gridWidth; 
+        height = gridHeight;
+
+        gridSize = width * height;
+        foodIntensity = new float[gridSize];
+
+        activeCells = new HashSet<int>();
+        lastUpdate = new float[gridSize];
+
+        for (int i = 0; i < gridSize; i++)
+        {
+            foodIntensity[i] = 0;
+
+            lastUpdate[i] = 0;
+        }
+    }
+
     public void DepositPheromoneOn(Vector2 position, PheromoneSetting pheromoneSettings, PheromoneType pheromoneType)
     {
-        int index = GetPosFromVector(position);
+        int index = Utils.GetPosFromVector(position);
 
         switch (pheromoneType)
         {
@@ -89,12 +87,6 @@ public class PheromoneManager : MonoBehaviour
                 break;
             case PheromoneType.Food:
                 foodIntensity[index] += pheromoneSettings.strength;
-
-                lastUpdate[index] = Time.time;
-                activeCells.Add(index);
-                break;
-            case PheromoneType.Nest:
-                nestIntensity[index] += pheromoneSettings.strength;
 
                 lastUpdate[index] = Time.time;
                 activeCells.Add(index);
@@ -116,19 +108,15 @@ public class PheromoneManager : MonoBehaviour
     /// <param name="sensorsDistance">How far are the sensors form the position.</param>
     /// <returns>The position of the stronges pheromone in the given radius around the sensors, as 2D vector. 
     /// If the pheromone is not found, it returns Vector2.zero.</returns>
-    public Vector2 GetStrongestPheromonePos(Vector2 position, Vector2 orientation, int radius = 3, float angle = 30, float sensorsDistance = 3)
+    public Vector2 GetStrongestPheromonePos(AntSensor[] sensors)
     {
-        Vector2[] sensorsOrientation = { Utils.Rotate(orientation, -angle), orientation, Utils.Rotate(orientation, angle) };
-
         (Vector2 pos, float val)[] foundPheromones = new (Vector2 strongestPosLeft, float strongestValLeft)[3];
 
-        for (int i = 0; i < sensorsOrientation.Length; i++)
+        for (int i = 0; i < sensors.Length; i++)
         {
-            Vector2 sensorOrientation = sensorsOrientation[i];
+            AntSensor sensor = sensors[i];
 
-            Vector2 sensorPos = position + sensorOrientation * sensorsDistance;
-
-            foundPheromones[i] = GetStrongestPheromoneInRange(sensorPos, PheromoneType.Food, radius);
+            foundPheromones[i] = GetStrongestPheromoneInRange(sensor.Position, PheromoneType.Food, sensor.Radius);
         }
 
         Vector2 strongestPos = foundPheromones[0].pos;
@@ -175,7 +163,7 @@ public class PheromoneManager : MonoBehaviour
                 if (dx * dx + dy * dy > radiusSquared)
                     continue;
 
-                int index = GetIndexFromPos(ix, iy);
+                int index = Utils.GetIndexFromPos(ix, iy);
 
                 float intensity = GetPheromoneAt(index, type);
 
@@ -204,9 +192,6 @@ public class PheromoneManager : MonoBehaviour
             case PheromoneType.Food:
                 intensity = foodIntensity[index];
                 break;
-            case PheromoneType.Nest:
-                intensity = nestIntensity[index];
-                break;
             default:
                 break;
         }
@@ -223,12 +208,11 @@ public class PheromoneManager : MonoBehaviour
             if (Time.deltaTime - lastUpdate[cellIndex] <= updateInterval) { continue; }
 
             float newFoodIntensity = DecayPheromone(foodPheromoneDecayRate, foodIntensity[cellIndex]);
-            float newNestIntensity = DecayPheromone(nestPheromoneDecayRate, nestIntensity[cellIndex]);
 
             foodIntensity[cellIndex] = Math.Max(0, newFoodIntensity);
-            nestIntensity[cellIndex] = Math.Max(0, newFoodIntensity);
 
-            if (newFoodIntensity + newNestIntensity <= 0)
+            // If all intensities combined are zero
+            if (newFoodIntensity <= 0)
             {
                 removeList.Add(cellIndex);
             }
@@ -242,15 +226,6 @@ public class PheromoneManager : MonoBehaviour
             activeCells.Remove(index);
             removeList.Remove(index);
         }
-    }
-
-    private int GetPosFromVector(Vector2 position)
-    {
-        return Mathf.FloorToInt(position.y) * width + Mathf.FloorToInt(position.x);
-    }
-    private int GetIndexFromPos(int x, int y)
-    {
-        return x * width + y;
     }
 
     private float DecayPheromone(float baseDecayRate, float currIntensity)

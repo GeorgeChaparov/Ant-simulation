@@ -17,6 +17,27 @@ public class Utils
 
     public static bool IsOutOfBounds(Vector2 pos)
     {
-        throw new System.NotImplementedException();
+        int width = GameManager.Instance.gridWidth;
+        int height = GameManager.Instance.gridHeight;
+
+        if (pos.x > width ||
+            pos.x < 0 ||
+            pos.y > height ||
+            pos.y < 0)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static int GetPosFromVector(Vector2 position)
+    {
+        return Mathf.FloorToInt(position.y) * GameManager.Instance.gridWidth + Mathf.FloorToInt(position.x);
+    }
+
+    public static int GetIndexFromPos(int x, int y)
+    {
+        return x * GameManager.Instance.gridWidth + y;
     }
 }

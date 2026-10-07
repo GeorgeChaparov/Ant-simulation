@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Unity.VisualScripting;
 
 using UnityEngine;
+using UnityEngine.UIElements;
 
 
 /// <summary>
@@ -47,7 +48,7 @@ public struct Ant
 
     public Vector2 orientation;
     public float lastRandomRotation = 0;
-    public readonly float randomRotationfrequency = Random.Range(3, 5);
+    public readonly float randomRotationFrequency = Random.Range(3, 5);
 
     public float movementSpeed;
     public readonly Vector2 Forward => (position + orientation).normalized;
@@ -69,6 +70,8 @@ public struct Ant
     /// How confident the ant is in its estimate of the nest direction.
     /// </summary>
     public float nestDirectionConfidence = 0.5f;
+
+    public AntSensor[] sensors;
 
     public AntState state = AntState.None;
     public bool haveFood = false;
@@ -103,11 +106,20 @@ public struct Ant
 
         this.movementSpeed = Random.Range(2, 6);
 
+        this.sensors = new AntSensor[2];
+        sensors[0] = new AntSensor(pos, orientation, 30, 3);
+        sensors[1] = new AntSensor(pos, orientation, -30, 3);
+
         // Might add different genome for each ant and so different proterties for each pheromone of each ant in the future.
     }
 
     public void Move(Vector2 newPos)
     {
         position = newPos;
+
+        foreach (var sensor in sensors)
+        {
+            sensor.Update(position, orientation);
+        }
     }
 }

@@ -28,11 +28,6 @@ public class Visualization : MonoBehaviour
         gameManager.AntManager.OnNestAdded += UpdateNests;
     }
 
-    void FixedUpdate()
-    {
-        
-    }
-
     private void OnDrawGizmos()
     {
         Draw();

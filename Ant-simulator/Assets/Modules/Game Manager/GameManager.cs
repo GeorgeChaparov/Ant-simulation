@@ -2,35 +2,36 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
+    [SerializeField]
+    public int gridWidth = 10;
+    [SerializeField]
+    public int gridHeight = 10;
+
     private static PheromoneManager pheromoneManager = null;
     public PheromoneManager PheromoneManager { get { return pheromoneManager; } }
 
     private static AntManager antManager = null;
     public AntManager AntManager { get { return antManager; } }
 
-    private static GameManager gameManager = null;
-    public static GameManager GetGameManager { get { return gameManager; } }
+    private static GameManager instance = null;
+    public static GameManager Instance { get { return instance; } }
 
     private void Awake()
     {
-        gameManager = FindAnyObjectByType<GameManager>();
+        instance = FindAnyObjectByType<GameManager>();
 
-        if (gameManager.gameObject != gameObject)
+        if (instance.gameObject != gameObject)
         {
             Destroy(gameObject);
         }
+
+        pheromoneManager.Init(gridWidth, gridHeight);
     }
 
     private void OnValidate()
     {
         pheromoneManager = FindAnyObjectByType<PheromoneManager>();
         antManager = FindAnyObjectByType<AntManager>();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 
 

@@ -16,7 +16,7 @@ In the end, the user should be able to inspect ants and there stats such as time
 
 ## 4. Problems
 
-- Ants can leave the pheremone grid
+- Ants can leave the pheremone grid - Fixed
 - GameManager class is becoming a Monolith.
 
 ## 5. Last known task
@@ -29,8 +29,8 @@ I did not like the way the architecture was created because the GameManager clas
 
 ## 6. Next action
 
-> 1. Implement the method that checks if we are in bounds of the food and pheromone grid. Its under Utils.IsOutOfBounds()
-> 2. Use the method to stop the ants from leaving the grid area.
-> 3. Add a separet sensor class for ants that can detect whatever needed.
-> 4. Add food into the mix.
-> 5. Delete the GameManager class because it haves too much cupling.
+> 1. [x] Implement the method that checks if we are in bounds of the food and pheromone grid. Its under Utils.IsOutOfBounds()
+> 2. [x] Use the method to stop the ants from leaving the grid area.
+> 3. [] Add a separet sensor class for ants that can detect whatever needed.
+> 4. [] Add food into the mix.
+> 5. [] Delete the GameManager class because it haves too much cupling.
