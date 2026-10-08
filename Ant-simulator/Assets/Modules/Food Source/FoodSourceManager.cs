@@ -56,13 +56,6 @@ public class FoodSourceManager : MonoBehaviour
         }
     }
 
-    private int GetFoodAt(int index)
-    {
-        int amount = foodAmount[index];
-
-        return amount;
-    }
-
     private void AddFoodSource(FoodSource foodSource)
     {
         int x = Mathf.FloorToInt(foodSource.Position.x);
@@ -93,19 +86,32 @@ public class FoodSourceManager : MonoBehaviour
         }
     }
 
-    public void RemoveFoodAt(Vector2 pos, int amount)
+    public bool RemoveFoodAt(Vector2 pos, int amount)
     {
         int index = Utils.GetIndexFromVector(pos);
         int currentAmount = foodAmount[index];
 
         int newAmount = currentAmount - amount;
+
+        Debug.Log(
+            $"RemoveFood: index={index}, " +
+            $"amount={amount}, " +
+            $"currentAmount={currentAmount}, " +
+            $"newAmount={newAmount}"
+        );
+
         if (newAmount < 0)
         {
-            Debug.LogError($"Removing more food ({amount}) from the food source then its current amount ({currentAmount}).");
-            return;
+            Debug.LogError(
+                $"INVALID: index={index}, amount={amount}, " +
+                $"currentAmount={currentAmount}, newAmount={newAmount}"
+            );
+
+            return false;
         }
 
         foodAmount[index] = newAmount;
+        return true;
     }
 
     public Vector2 GetFoodInRadius(AntSensor[] antSensors)
@@ -164,5 +170,20 @@ public class FoodSourceManager : MonoBehaviour
         }
 
         return foodPos;
+    }
+
+    public (Vector2 pos, float amount)[] GetFood()
+    {
+        List<(Vector2 pos, float intensity)> food = new List<(Vector2 pos, float intensity)>();
+
+        for (int i = 0; i < foodAmount.Length; i++)
+        {
+            if (foodAmount[i] != 0)
+            {
+                food.Add((Utils.GetVectorFromIndex(i), foodAmount[i]));
+            }
+        }
+
+        return food.ToArray();
     }
 }

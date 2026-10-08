@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Assemblies;
 
 public class GameManager : MonoBehaviour
 {
@@ -6,6 +7,8 @@ public class GameManager : MonoBehaviour
     public int gridWidth = 10;
     [SerializeField]
     public int gridHeight = 10;
+
+    private int currAntID = 1;
 
     public delegate void Initialized();
     public Initialized OnInitialized;
@@ -33,8 +36,8 @@ public class GameManager : MonoBehaviour
         OnInitialized.Invoke();
     }
 
-    private void UpdateVizualizerNestList()
-    { 
-        
+    public int GetAntID()
+    {
+        return currAntID++;
     }
 }

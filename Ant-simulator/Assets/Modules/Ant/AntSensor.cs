@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 public class AntSensor
@@ -28,5 +29,13 @@ public class AntSensor
     {
         orientation = Utils.Rotate(antOrientation, angle);
         position = antPos + orientation * sensorsDistance;
+    }
+
+    public static (Vector2 foodSourcePosition, Vector2 foodPheromonePosition) CheckForPheromones(AntSensor[] sensors)
+    {
+        Vector2 foodSourcePosition = FoodSourceManager.Instance.GetFoodInRadius(sensors);
+        Vector2 foodPheromonePosition = PheromoneManager.Instance.GetWeakestPheromonePos(sensors);
+
+        return (foodSourcePosition, foodPheromonePosition);
     }
 }

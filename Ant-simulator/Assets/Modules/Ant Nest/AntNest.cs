@@ -37,7 +37,7 @@ public class AntNest : MonoBehaviour
         }
 
         lastSpawn = Time.time;
-        SpawnAnt(new Ant(0, transform.position, new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized));
+        SpawnAnt(new Ant(GameManager.Instance.GetAntID(), transform.position, new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized));
     }
 
     public void SpawnAnt(Ant ant)

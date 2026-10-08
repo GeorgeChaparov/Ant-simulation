@@ -31,13 +31,21 @@ public class Utils
         return false;
     }
 
-    public static int GetIndexFromVector(Vector2 position)
-    {
-        return Mathf.FloorToInt(position.y) * GameManager.Instance.gridWidth + Mathf.FloorToInt(position.x);
-    }
-
     public static int GetIndexFromPos(int x, int y)
     {
-        return x * GameManager.Instance.gridWidth + y;
+        return y * GameManager.Instance.gridWidth + x;
+    }
+
+    public static int GetIndexFromVector(Vector2 position)
+    {
+        return GetIndexFromPos(Mathf.FloorToInt(position.x), Mathf.FloorToInt(position.y));
+    }
+
+    public static Vector2 GetVectorFromIndex(int index)
+    {
+        int x = index % GameManager.Instance.gridWidth;
+        int y = index / GameManager.Instance.gridWidth;
+
+        return new Vector2(x, y);
     }
 }

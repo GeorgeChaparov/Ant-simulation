@@ -9,7 +9,7 @@ In the end, the user should be able to inspect ants and there stats such as time
 
 - [x] Visualizatios of ants
 - [x] Ants spawning
-- [ ] Logic for returning to home after finding food
+- [x] Logic for returning to home after finding food
 - [x] Food finding.
 
 ## 3. Architecture
@@ -32,10 +32,11 @@ I did not like the way the architecture was created because the GameManager clas
 > 1. [x] Implement the method that checks if we are in bounds of the food and pheromone grid. Its under Utils.IsOutOfBounds()
 > 2. [x] Use the method to stop the ants from leaving the grid area.
 > 3. [x] Add a separet sensor class for ants that can detect whatever needed.
-> 4. [] Add food into the mix.
+> 4. [x] Add food into the mix.
 > 5. [x] Cleane the GameManager class because it haves too much cupling.
 
 ## 7. TODO
-> 1. Add random noise to the nest vector in AntManager.UpdateNestDirAproximatio()
-> 2. Calculate the home vector confidence.
-> 3. Add create the algorithm for returning to the nest by normalizing the home vector and then adding random noise based on the home vector confidence. 
+> 1. [x] Add random noise to the nest vector in AntManager.UpdateNestDirAproximatio()
+> 2. [x] Calculate the home vector confidence.
+> 3. [x] Create the algorithm for returning to the nest by normalizing the home vector and then adding random noise based on the home vector confidence. 
+> 4. [] There is a problem with the following of the pheromones. The ants should remember where the last food source was and if there are no pheromones to follow, then go in the general direction of the food. Just like the nest searching with a confidence and everything. And maybe try to make the ants go towards the average direction of all of the pheromones in the range of there sensors, but giving them weigths based on how intense they are.

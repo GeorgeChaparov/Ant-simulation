@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
+using static UnityEditor.PlayerSettings;
 using static UnityEditor.ShaderGraph.Internal.KeywordDependentCollection;
 
 public class PheromoneManager : MonoBehaviour
@@ -35,6 +36,11 @@ public class PheromoneManager : MonoBehaviour
     /// Stores the last time each cell was updated. Will be removed in favorer of lazy decay as needed.
     /// </summary>
     private float[] lastUpdate;
+
+    /// <summary>
+    /// The ID of the last ant that updated the intensity of the cell.
+    /// </summary>
+    private int[] lastAntID;
 
     private static PheromoneManager instance = null;
     public static PheromoneManager Instance { get { return instance; } }
@@ -65,24 +71,34 @@ public class PheromoneManager : MonoBehaviour
 
         activeCells = new HashSet<int>();
         lastUpdate = new float[gridSize];
+        lastAntID = new int[gridSize];
 
         for (int i = 0; i < gridSize; i++)
         {
             foodIntensity[i] = 0;
-
             lastUpdate[i] = 0;
+            lastAntID[i] = 0;
         }
     }
 
-    public void DepositPheromoneOn(Vector2 position, PheromoneSetting pheromoneSettings, PheromoneType pheromoneType)
+    public void DepositPheromoneOn(int antID, Vector2 position, PheromoneSetting pheromoneSettings, PheromoneType pheromoneType)
     {
         int index = Utils.GetIndexFromVector(position);
+
+        if (antID == lastAntID[index])
+        {
+            return;
+        }
+
+        lastAntID[index] = antID;
 
         switch (pheromoneType)
         {
             case PheromoneType.None:
                 break;
             case PheromoneType.Food:
+
+
                 foodIntensity[index] += pheromoneSettings.strength;
 
                 lastUpdate[index] = Time.time;
@@ -94,47 +110,39 @@ public class PheromoneManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Searches for the strongest pheromone around three sensors positioned
+    /// Searches for the weakest pheromone around three sensors positioned
     /// relative to the given orientation.
     /// </summary>
-    /// <param name="position">Current position</param>
-    /// <param name="orientation"></param>
-    /// <param name="type">The type of pheremone</param>
-    /// <param name="radius">The radius around each sensor that will be searched.</param>
-    /// <param name="angle">The angle of the sensors from the forward orientation.</param>
-    /// <param name="sensorsDistance">How far are the sensors form the position.</param>
-    /// <returns>The position of the stronges pheromone in the given radius around the sensors, as 2D vector. 
+    /// <returns>The position of the weakest pheromone in the given radius around the sensors, as 2D vector. 
     /// If the pheromone is not found, it returns Vector2.zero.</returns>
-    public Vector2 GetStrongestPheromonePos(AntSensor[] sensors)
+    public Vector2 GetWeakestPheromonePos(AntSensor[] sensors)
     {
-        (Vector2 pos, float val)[] foundPheromones = new (Vector2 strongestPosLeft, float strongestValLeft)[3];
+        (Vector2 pos, float val)[] foundPheromones = new (Vector2 weakestPosLeft, float weakestValLeft)[sensors.Length];
 
         for (int i = 0; i < sensors.Length; i++)
         {
             AntSensor sensor = sensors[i];
 
-            foundPheromones[i] = GetStrongestPheromoneInRange(sensor.Position, PheromoneType.Food, sensor.Radius);
+            foundPheromones[i] = GetWeakestPheromoneInRange(sensor.Position, PheromoneType.Food, sensor.Radius);
         }
 
-        Vector2 strongestPos = foundPheromones[0].pos;
-        float strongestVal = foundPheromones[0].val;
+        Vector2 weakestPos = foundPheromones[0].pos;
+        float weakestVal = foundPheromones[0].val;
 
-        if (strongestVal < foundPheromones[1].val)
+        for (int i = 1; i < sensors.Length; i++)
         {
-            strongestVal = foundPheromones[1].val;
-            strongestPos.x = foundPheromones[1].pos.x;
-            strongestPos.y = foundPheromones[1].pos.y;
-        }
-        if (strongestVal < foundPheromones[2].val)
-        {
-            strongestPos.x = foundPheromones[2].pos.x;
-            strongestPos.y = foundPheromones[2].pos.y;
+            if (weakestVal > foundPheromones[i].val)
+            {
+                weakestVal = foundPheromones[i].val;
+                weakestPos.x = foundPheromones[i].pos.x;
+                weakestPos.y = foundPheromones[i].pos.y;
+            }
         }
 
-        return strongestPos;
+        return weakestPos;
     }
 
-    private (Vector2, float) GetStrongestPheromoneInRange(Vector2 position, PheromoneType type, int radius = 3)
+    private (Vector2, float) GetWeakestPheromoneInRange(Vector2 position, PheromoneType type, int radius = 3)
     {
         int x = Mathf.FloorToInt(position.x);
         int y = Mathf.FloorToInt(position.y);
@@ -147,8 +155,8 @@ public class PheromoneManager : MonoBehaviour
 
         int radiusSquared = radius * radius;
 
-        Vector2 strongestPos = Vector2.zero;
-        float strongestVal = 0;
+        Vector2 weakestPos = Vector2.zero;
+        float weakestVal = int.MaxValue;
 
         for (int iy = minY; iy <= maxY; iy++)
         {
@@ -164,19 +172,24 @@ public class PheromoneManager : MonoBehaviour
 
                 float intensity = GetPheromoneAt(index, type);
 
-                if (strongestVal < intensity)
+                if (intensity == 0)
                 {
-                    strongestVal = intensity;
-                    strongestPos.x = ix;
-                    strongestPos.y = iy;
+                    continue;
+                }
+
+                if (weakestVal > intensity)
+                {
+                    weakestVal = intensity;
+                    weakestPos.x = ix;
+                    weakestPos.y = iy;
                 }
             }
         }
 
-        if (strongestVal == 0)
+        if (weakestVal == int.MaxValue)
             return (Vector2.zero, 0);
 
-        return ((strongestPos - position).normalized, strongestVal);
+        return (weakestPos, weakestVal);
     }
 
     private float GetPheromoneAt(int index, PheromoneType type)
@@ -202,14 +215,14 @@ public class PheromoneManager : MonoBehaviour
 
         foreach (var cellIndex in activeCells)
         {
-            if (Time.deltaTime - lastUpdate[cellIndex] <= updateInterval) { continue; }
+            if (Time.time - lastUpdate[cellIndex] > updateInterval) { continue; }
 
             float newFoodIntensity = DecayPheromone(foodPheromoneDecayRate, foodIntensity[cellIndex]);
 
             foodIntensity[cellIndex] = Math.Max(0, newFoodIntensity);
 
-            // If all intensities combined are zero
-            if (newFoodIntensity <= 0)
+            // If all intensities combined are effectively zero.
+            if (newFoodIntensity <= 0.1)
             {
                 removeList.Add(cellIndex);
             }
@@ -217,11 +230,10 @@ public class PheromoneManager : MonoBehaviour
             lastUpdate[cellIndex] = Time.time;
         }
 
-        for (int i = removeList.Count - 1; i >= 0; i--)
+        for (int i = 0; i < removeList.Count; i++)
         {
             int index = removeList[i];
             activeCells.Remove(index);
-            removeList.Remove(index);
         }
     }
 
@@ -233,5 +245,19 @@ public class PheromoneManager : MonoBehaviour
         currIntensity *= (1f - decayRate * Time.deltaTime);
 
         return currIntensity;
+    }
+
+    public (Vector2 pos, float intensity)[] GetActivePheromones()
+    {
+        (Vector2 pos, float intensity)[] activePheromones = new (Vector2 pos, float intensity)[activeCells.Count];
+
+        int iterator = 0;
+
+        foreach (var activeCell in activeCells)
+        {
+            activePheromones[iterator++] = (Utils.GetVectorFromIndex(activeCell), foodIntensity[activeCell]);
+        }
+
+        return activePheromones;
     }
 }
