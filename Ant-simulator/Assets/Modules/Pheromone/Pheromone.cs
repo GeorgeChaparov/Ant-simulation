@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 /// </summary>
 public enum PheromoneType
 {
-    None = 0, Food = 1, Nest = 2
+    None = 0, Food = 1,
 }
 
 public struct PheromoneSetting

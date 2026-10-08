@@ -1,30 +1,43 @@
 using UnityEngine;
+using UnityEngine.Assemblies;
 
 public class GameManager : MonoBehaviour
 {
-    public PheromoneManager PheromoneManager { get; }
+    [SerializeField]
+    public int gridWidth = 10;
+    [SerializeField]
+    public int gridHeight = 10;
 
-    private static GameManager gameManager = null;
-    public static GameManager GetGameManager { get { return gameManager; } }
+    private int currAntID = 1;
+
+    public delegate void Initialized();
+    public Initialized OnInitialized;
+
+    private static GameManager instance = null;
+    public static GameManager Instance { get { return instance; } }
 
     private void Awake()
     {
-        gameManager = FindAnyObjectByType<GameManager>();
+        instance = FindAnyObjectByType<GameManager>();
 
-        if (gameManager.gameObject != gameObject)
+        if (instance.gameObject != gameObject)
         {
             Destroy(gameObject);
         }
+
+        OnInitialized += Visualization.Instance.OnSimulationInitialize;
     }
 
-    void Start()
+    private void Start()
     {
-       
+        PheromoneManager.Instance.Init(gridWidth, gridHeight);
+        FoodSourceManager.Instance.Init(gridWidth, gridHeight);
+
+        OnInitialized.Invoke();
     }
 
-    // Update is called once per frame
-    void Update()
+    public int GetAntID()
     {
-        
+        return currAntID++;
     }
 }
