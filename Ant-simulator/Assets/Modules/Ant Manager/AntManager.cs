@@ -1,12 +1,5 @@
-using NUnit.Framework.Internal;
-
 using System.Collections.Generic;
-
-using Unity.VisualScripting;
-
 using UnityEngine;
-using UnityEngine.Rendering.UI;
-using UnityEngine.UIElements;
 
 public class AntManager : MonoBehaviour
 {
@@ -61,9 +54,11 @@ public class AntManager : MonoBehaviour
         ant = ChooseAntState(ant);
         ant = ChooseOrientation(ant);
 
+        // Calculate the new position.
         Vector2 direction = ant.movementSpeed * Time.deltaTime * ant.orientation;
         Vector2 newPos = ant.position + direction;
 
+        // Check if its out of the bounds of the grid.
         if (Utils.IsOutOfBounds(newPos))
         {
             newPos = ant.position - direction;
@@ -77,6 +72,8 @@ public class AntManager : MonoBehaviour
 
     private Ant UpdateNestDirAproximatio(Ant ant, Vector2 lastPos)
     {
+        // The ant "remembers" where the nest is by updating its known position based on all of the moves it has done up to this point.
+        // Small random offset is added. This acts as uncertainty. The further the ant goes, the more "uncertain" it becomes.
         Vector2 movement = (ant.position - lastPos);
         ant.distanceTravelledFromNest += movement.magnitude;
         ant.nestVector -= movement + new Vector2(Random.Range(0f, 0.0002f), Random.Range(0f, 0.0002f));
@@ -95,12 +92,15 @@ public class AntManager : MonoBehaviour
         // We have food.
         if (ant.haveFood)
         {
+            // Leave food pheromone.
             PheromoneManager.Instance.DepositPheromoneOn(ant.id, ant.position, ant.foodPheromoneSettings, PheromoneType.Food);
 
+            // We "see" the nest.
             if (ant.state == AntState.GoingToTheNest)
             {
                 if (ant.NestDistance <= 3)
                 {
+                    // Leave food and reset nest info.
                     ant.haveFood = false;
                     ant.orientation = -ant.orientation;
                     ant.ResetNestInfo();
@@ -108,12 +108,14 @@ public class AntManager : MonoBehaviour
                     ant.state = AntState.SearchingForFood;
                 }
             }
+            // We dont see the nest yet.
             else
             {
                 ant.state = AntState.SearchingForNest;
 
+                // We just saw the nest for the first time.
                 if (ant.NestDistance <= 100)
-                {
+                { 
                     ant.state = AntState.GoingToTheNest;
                 }
             }
@@ -121,24 +123,31 @@ public class AntManager : MonoBehaviour
         // We do not have food yet.
         else
         {
+            // We "see" the food.
             if (ant.state == AntState.GoingTowardsFood)
             {
+                // We are close enough to get it.
                 if ((ant.position - ant.foodSourcePosition).sqrMagnitude < 1 )
                 {
+                    // The food is still there by the time we get there.
                     if (FoodSourceManager.Instance.RemoveFoodAt(ant.foodSourcePosition, 1))
                     {
                         ant.haveFood = true;
                     }
+                    // The food is gone
                     else
                     {
                         ant.state = AntState.SearchingForFood;
                     }
                 }
+
                 return ant;
             }
 
+            // Check for food or pheromones
             ant.CheckSensors();
 
+            // We just saw the food source for the first time.
             if (ant.foundFoodSource)
             {
                 ant.targetPosition = ant.foodSourcePosition;
@@ -147,16 +156,16 @@ public class AntManager : MonoBehaviour
                 return ant;
             }
 
+            // We dont have food source, but we have pheromone path to follow.
             if (ant.foundFoodPheromone)
             {
-                // We dont have food source, but we have pheromone path to follow - AntState.FollowingFoodPheromone
                 ant.targetPosition = ant.foodPheromonePosition;
                 ant.state = AntState.FollowingFoodPheromone;
 
                 return ant;
             }
 
-            // We dont have food source or food pheromone to follow - AntState.SearchingForFood
+            // We dont have food source or food pheromone to follow
             ant.state = AntState.SearchingForFood;
         }
         return ant;
@@ -193,6 +202,7 @@ public class AntManager : MonoBehaviour
                 ant.orientation = foodDirection.normalized;
                 break;
              case AntState.SearchingForNest:
+                // We go in the direction where we think the nest is. Based on our confidence in the direction, we explore around us.
                 float randomAmount = 1f - ant.nestDirectionConfidence;
                 ant.orientation = (ant.nestVector + new Vector2(-randomAmount, randomAmount)).normalized;
                 break;
@@ -203,9 +213,6 @@ public class AntManager : MonoBehaviour
                 Vector2 pheromoneDirection = ant.targetPosition - ant.position;
                 ant.orientation = pheromoneDirection.normalized;
                 break;
-            //case AntState.FollowingHomePheromone:
-            //    FollowPheromones(ant);
-            //    break;
             default:
                 break;
         }

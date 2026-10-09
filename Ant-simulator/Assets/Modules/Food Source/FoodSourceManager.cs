@@ -1,9 +1,5 @@
 using System.Collections.Generic;
-
-using Unity.VisualScripting;
-
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class FoodSourceManager : MonoBehaviour
 {
@@ -30,11 +26,6 @@ public class FoodSourceManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
-    }
-
-    private void Start()
-    {
-        
     }
 
     public void Init(int gridWidth, int gridHeight)
