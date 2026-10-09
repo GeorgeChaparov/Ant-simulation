@@ -1,11 +1,4 @@
-using NUnit.Framework;
-
-using Unity.VisualScripting;
-
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
-
 
 /// <summary>
 /// The current state of the ant. It shows the intent of the ant.
@@ -21,7 +14,7 @@ public enum AntState
     /// </summary>
     SearchingForFood = 1, 
     /// <summary>
-    /// The ant follows established path to the nest.
+    /// The ant sees the nest and is going toward it.
     /// </summary>
     GoingToTheNest = 2,
     /// <summary>
@@ -29,10 +22,8 @@ public enum AntState
     /// </summary>
     FollowingFoodPheromone = 3,
     /// <summary>
-    /// The ant follows established path to the nest so it can leave the food there.
+    /// The ant uses its estimation where the nest should be in order to return to it.
     /// </summary>
-    //FollowingHomePheromone = 4,
-
     SearchingForNest = 5,
     /// <summary>
     /// Sensors have detected food and we are going towards it.
@@ -51,15 +42,21 @@ public struct Ant
     /// When was the last random rotation while searching for food.
     /// </summary>
     public float lastRandomRotation = 0;
+    /// <summary>
+    /// How often should we make a random rotation while searching for food.
+    /// </summary>
     public readonly float randomRotationFrequency;
 
     /// <summary>
     /// When was the last time that we checked for pheromone.
     /// </summary>
     public float lastPheromoneCheck = 0;
+    /// <summary>
+    /// How often should we check for pheromone.
+    /// </summary>
     public readonly float pheromoneCheckFrequency;
 
-    public float movementSpeed;
+    public readonly float movementSpeed;
     public readonly Vector2 Forward => (position + orientation).normalized;
 
     /// <summary>
@@ -67,7 +64,7 @@ public struct Ant
     /// </summary>
     public Vector2 nestVector = Vector2.zero;
     /// <summary>
-    /// The position of the nest. Its used to get the direction of the nest and never directly for path finding except when the ant is rigth next to the nest.
+    /// The position of the nest. Its used to get the direction of the nest and never directly for path finding except when the ant is right next to the nest.
     /// Its equal to the position in the beginning, because the nest is the thing that "spawns" the ant.
     /// </summary>
     public readonly Vector2 nestPosition;
@@ -81,6 +78,9 @@ public struct Ant
     /// </summary>
     public float nestDirectionConfidence = 1f;
     public float distanceTravelledFromNest = 0f;
+    /// <summary>
+    /// The travelled distance from the nest after which the ant will trust its estimate of the nest position the least.
+    /// </summary>
     public float maxReliableDistance = 1000f;
 
     public AntSensor[] sensors;
@@ -94,6 +94,7 @@ public struct Ant
 
     public bool foundFoodPheromone = false;
     public Vector2 foodPheromonePosition = Vector2.zero;
+
     public PheromoneSetting foodPheromoneSettings;
 
 
@@ -164,7 +165,7 @@ public struct Ant
 
         lastPheromoneCheck = Time.time;
 
-        (foodSourcePosition, foodPheromonePosition) = AntSensor.CheckForPheromones(sensors);
+        (foodSourcePosition, foodPheromonePosition) = AntSensor.Check(sensors);
 
         /// Check for food source
         foundFoodSource = foodSourcePosition != Vector2.zero;

@@ -1,14 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-using Unity.VisualScripting;
-
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
-
-using static UnityEditor.PlayerSettings;
-using static UnityEditor.ShaderGraph.Internal.KeywordDependentCollection;
 
 public class PheromoneManager : MonoBehaviour
 {
@@ -142,6 +135,23 @@ public class PheromoneManager : MonoBehaviour
         return weakestPos;
     }
 
+    /// <summary>
+    /// Can be used to get an array to visualize the food.
+    /// </summary>
+    public (Vector2 pos, float intensity)[] GetActivePheromones()
+    {
+        (Vector2 pos, float intensity)[] activePheromones = new (Vector2 pos, float intensity)[activeCells.Count];
+
+        int iterator = 0;
+
+        foreach (var activeCell in activeCells)
+        {
+            activePheromones[iterator++] = (Utils.GetVectorFromIndex(activeCell), foodIntensity[activeCell]);
+        }
+
+        return activePheromones;
+    }
+
     private (Vector2, float) GetWeakestPheromoneInRange(Vector2 position, PheromoneType type, int radius = 3)
     {
         int x = Mathf.FloorToInt(position.x);
@@ -245,19 +255,5 @@ public class PheromoneManager : MonoBehaviour
         currIntensity *= (1f - decayRate * Time.deltaTime);
 
         return currIntensity;
-    }
-
-    public (Vector2 pos, float intensity)[] GetActivePheromones()
-    {
-        (Vector2 pos, float intensity)[] activePheromones = new (Vector2 pos, float intensity)[activeCells.Count];
-
-        int iterator = 0;
-
-        foreach (var activeCell in activeCells)
-        {
-            activePheromones[iterator++] = (Utils.GetVectorFromIndex(activeCell), foodIntensity[activeCell]);
-        }
-
-        return activePheromones;
     }
 }
