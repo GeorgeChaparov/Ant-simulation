@@ -78,16 +78,22 @@ public struct Ant
     /// </summary>
     public float nestDirectionConfidence = 1f;
     public float distanceTravelledFromNest = 0f;
+
     /// <summary>
-    /// The travelled distance from the nest after which the ant will trust its estimate of the nest position the least.
+    /// The travelled distance from a point of interest after which the ant will trust its estimate, of where it is, the least.
     /// </summary>
-    public float maxReliableDistance = 1000f;
+    private float maxReliableDistance = 1000f;
+
+    /// <summary>
+    /// How confident the ant is in its estimate of the nest direction.
+    /// </summary>
+    public float lastFoodSourceDirectionConfidence = 1f;
+    public float distanceTravelledFromLastFood = 0f;
 
     public AntSensor[] sensors;
 
     public AntState state = AntState.None;
     public bool haveFood = false;
-    public float foodMemoryStrength = 0;
 
     public bool foundFoodSource = false;
     public Vector2 foodSourcePosition = Vector2.zero;
@@ -102,7 +108,12 @@ public struct Ant
     /// The number of blocks around the ant's sensor that are gonna be searched when searching for pheromones.
     /// Can be changed to FOV in the future.
     /// </summary>
-    public readonly int sensorRadius = 5;
+    public readonly int sensorRadius = 2;
+
+    /// <summary>
+    /// How far the sensors sit from the ant
+    /// </summary>
+    public readonly int sensorDistance = 3;
 
     // Metrics
     public int id;
@@ -124,9 +135,10 @@ public struct Ant
         randomRotationFrequency = Random.Range(2 / halfSpeed, 4 / halfSpeed);
         pheromoneCheckFrequency = 0.4f / halfSpeed;
 
-        this.sensors = new AntSensor[2];
-        sensors[0] = new AntSensor(pos, orientation, 30, sensorRadius);
-        sensors[1] = new AntSensor(pos, orientation, -30, sensorRadius);
+        this.sensors = new AntSensor[3];
+        sensors[0] = new AntSensor(pos, orientation, 35, sensorDistance, sensorRadius);
+        sensors[1] = new AntSensor(pos, orientation, 0, sensorDistance, sensorRadius);
+        sensors[2] = new AntSensor(pos, orientation, -35, sensorDistance, sensorRadius);
         
         foodPheromoneSettings = new PheromoneSetting(10);
 
@@ -144,9 +156,14 @@ public struct Ant
         }
     }
 
-    public void CalculateConfidence()
+    public void CalculateNestPosConfidence()
     {
         nestDirectionConfidence = Mathf.Clamp01(1f - distanceTravelledFromNest / maxReliableDistance);
+    }
+
+    public void CalculateFoodPosConfidence()
+    {
+        lastFoodSourceDirectionConfidence = Mathf.Clamp01(1f - distanceTravelledFromLastFood / maxReliableDistance);
     }
 
     public void ResetNestInfo()

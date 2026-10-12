@@ -10,7 +10,7 @@ public class AntSensor
     public int Radius => radius;
 
     float angle = 30;
-    float sensorsDistance = 3;
+    float sensorsDistance = 5;
 
     /// <summary>
     /// The sensor the ant uses to check for food and pheromones.
@@ -44,7 +44,7 @@ public class AntSensor
     public static (Vector2 foodSourcePosition, Vector2 foodPheromonePosition) Check(AntSensor[] sensors)
     {
         Vector2 foodSourcePosition = FoodSourceManager.Instance.GetFoodInRadius(sensors);
-        Vector2 foodPheromonePosition = PheromoneManager.Instance.GetWeakestPheromonePos(sensors);
+        Vector2 foodPheromonePosition = PheromoneManager.Instance.GetWeakestWeightedPheromonePos(sensors, 0.2f, 0.2f);
 
         return (foodSourcePosition, foodPheromonePosition);
     }

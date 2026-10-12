@@ -83,7 +83,7 @@ public class AntManager : MonoBehaviour
             return ant;
         }
 
-        ant.CalculateConfidence();
+        ant.CalculateNestPosConfidence();
         return ant;
     }
 
@@ -105,7 +105,7 @@ public class AntManager : MonoBehaviour
                     ant.orientation = -ant.orientation;
                     ant.ResetNestInfo();
 
-                    ant.state = AntState.SearchingForFood;
+                    ant.state = AntState.FollowingFoodPheromone;
                 }
             }
             // We dont see the nest yet.
@@ -178,6 +178,7 @@ public class AntManager : MonoBehaviour
             case AntState.None:
                 break;
             case AntState.SearchingForFood:
+
                 // Go in a random direction for a little then change direction with a few degrees and go for a little.
                 Vector2 newOrientation = ant.orientation;
 

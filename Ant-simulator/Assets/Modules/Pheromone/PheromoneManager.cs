@@ -18,6 +18,10 @@ public class PheromoneManager : MonoBehaviour
     [Tooltip("How fast should the pheromones for food decay.")]
     private float foodPheromoneDecayRate = 1f;
 
+    [SerializeField]
+    [Tooltip("The maximum intensity a cell can have.")]
+    private float maxIntensity = 100;
+
     private float[] foodIntensity;
 
     /// <summary>
@@ -92,7 +96,12 @@ public class PheromoneManager : MonoBehaviour
             case PheromoneType.Food:
 
 
-                foodIntensity[index] += pheromoneSettings.strength;
+                if (foodIntensity[index] >= maxIntensity)
+                {
+                    break;
+                }
+
+                foodIntensity[index] += Math.Min(pheromoneSettings.strength, maxIntensity);
 
                 lastUpdate[index] = Time.time;
                 activeCells.Add(index);
@@ -101,35 +110,55 @@ public class PheromoneManager : MonoBehaviour
                 break;
         }
     }
-
-    /// <summary>
-    /// Searches for the weakest pheromone around three sensors positioned
-    /// relative to the given orientation.
-    /// </summary>
-    /// <returns>The position of the weakest pheromone in the given radius around the sensors, as 2D vector. 
+    /// <param name="intensityOffset">An offset between 0.00 and 1.00, applied towards the sensor with the most pheromone cells</param>
+    /// <param name="weakestOffset">An offset between 0.00 and 1.00 towards the cell with the smallest valid intensity</param>
+    /// <returns>The average position of each cell with valid intensity, from the sensor with the smallest intensity, 
+    /// with an offset towards the average position of each cell with a valid intensity, 
+    /// from the sensor that have the most valid cells.
     /// If the pheromone is not found, it returns Vector2.zero.</returns>
-    public Vector2 GetWeakestPheromonePos(AntSensor[] sensors)
+    public Vector2 GetWeakestWeightedPheromonePos(AntSensor[] sensors, float intensityOffset, float weakestOffset)
     {
-        (Vector2 pos, float val)[] foundPheromones = new (Vector2 weakestPosLeft, float weakestValLeft)[sensors.Length];
+        (Vector2 pos, float val, int pheromoneCount)[] foundPheromones = new (Vector2 weakestPosLeft, float weakestValLeft, int pheromoneCount)[sensors.Length];
+
+        intensityOffset = Math.Clamp(intensityOffset, 0f, 1f);
+        weakestOffset = Math.Clamp(weakestOffset, 0f, 1f);
 
         for (int i = 0; i < sensors.Length; i++)
         {
             AntSensor sensor = sensors[i];
-
-            foundPheromones[i] = GetWeakestPheromoneInRange(sensor.Position, PheromoneType.Food, sensor.Radius);
+            
+            foundPheromones[i] = GetAveragePheromonPosInRagne(sensor.Position, PheromoneType.Food, sensor.Radius, weakestOffset);
         }
 
-        Vector2 weakestPos = foundPheromones[0].pos;
-        float weakestVal = foundPheromones[0].val;
+        int mostPheromones = foundPheromones[0].pheromoneCount;
+        int sensorIndexWithMostPheromones = 0;
+        float weakestVal = float.MaxValue;
+        Vector2 weakestPos = Vector2.zero;
 
-        for (int i = 1; i < sensors.Length; i++)
+        for (int i = 0; i < sensors.Length; i++)
         {
+            if (foundPheromones[i].pheromoneCount == 0)
+            {
+                continue;
+            }
+
+            if (mostPheromones < foundPheromones[i].pheromoneCount)
+            {
+                mostPheromones = foundPheromones[i].pheromoneCount;
+                sensorIndexWithMostPheromones = i;
+            }
+
             if (weakestVal > foundPheromones[i].val)
             {
                 weakestVal = foundPheromones[i].val;
                 weakestPos.x = foundPheromones[i].pos.x;
                 weakestPos.y = foundPheromones[i].pos.y;
             }
+        }
+
+        if (weakestPos != foundPheromones[sensorIndexWithMostPheromones].pos)
+        {
+            weakestPos = Vector2.Lerp(weakestPos, foundPheromones[sensorIndexWithMostPheromones].pos, intensityOffset);
         }
 
         return weakestPos;
@@ -152,7 +181,15 @@ public class PheromoneManager : MonoBehaviour
         return activePheromones;
     }
 
-    private (Vector2, float) GetWeakestPheromoneInRange(Vector2 position, PheromoneType type, int radius = 3)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="type"></param>
+    /// <param name="radius"></param>
+    /// <param name="weakestOffset">An offset between 0.00 and 1.00 towards the cell with the smallest valid intensity</param>
+    /// <returns>The average position of all of the pheromones in range with an offset towards the weakest pheromone as well as its intensity.</returns>
+    private (Vector2 averagePos, float weakestVal, int pheromoneCount) GetAveragePheromonPosInRagne(Vector2 position, PheromoneType type, int radius, float weakestOffset)
     {
         int x = Mathf.FloorToInt(position.x);
         int y = Mathf.FloorToInt(position.y);
@@ -165,8 +202,11 @@ public class PheromoneManager : MonoBehaviour
 
         int radiusSquared = radius * radius;
 
+        Vector2 averagePos = Vector2.zero;
+        int count = 0;
+
         Vector2 weakestPos = Vector2.zero;
-        float weakestVal = int.MaxValue;
+        float weakestVal = float.MaxValue;
 
         for (int iy = minY; iy <= maxY; iy++)
         {
@@ -187,19 +227,25 @@ public class PheromoneManager : MonoBehaviour
                     continue;
                 }
 
-                if (weakestVal > intensity)
+                averagePos += new Vector2(ix, iy);
+
+                if (intensity < weakestVal)
                 {
                     weakestVal = intensity;
-                    weakestPos.x = ix;
-                    weakestPos.y = iy;
+                    weakestPos = new Vector2(ix, iy);
                 }
+
+                count++;
             }
         }
 
-        if (weakestVal == int.MaxValue)
-            return (Vector2.zero, 0);
+        if (weakestVal == float.MaxValue)
+            return (Vector2.zero, 0, 0);
 
-        return (weakestPos, weakestVal);
+        Vector2 average = averagePos / count;
+        Vector2 weigthedAveragePos = Vector2.Lerp(average, weakestPos, weakestOffset);
+
+        return (weigthedAveragePos, weakestVal, count);
     }
 
     private float GetPheromoneAt(int index, PheromoneType type)
@@ -232,8 +278,9 @@ public class PheromoneManager : MonoBehaviour
             foodIntensity[cellIndex] = Math.Max(0, newFoodIntensity);
 
             // If all intensities combined are effectively zero.
-            if (newFoodIntensity <= 0.1)
+            if (foodIntensity[cellIndex] <= 0.1)
             {
+                foodIntensity[cellIndex] = 0;
                 removeList.Add(cellIndex);
             }
 

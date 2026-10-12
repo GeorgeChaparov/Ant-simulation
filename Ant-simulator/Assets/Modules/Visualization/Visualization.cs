@@ -9,6 +9,9 @@ public class Visualization : MonoBehaviour
     private AntNest[] antNests = new AntNest[0];
     public FoodSource[] foodSources = new FoodSource[0];
 
+    public bool drawAnts = true;
+    public bool drawPheromones = true;
+
     private void Awake()
     {
         instance = FindAnyObjectByType<Visualization>();
@@ -44,43 +47,8 @@ public class Visualization : MonoBehaviour
 
     private void Draw()
     {
-        (Vector2 position, float intensity)[] pheromones = PheromoneManager.Instance.GetActivePheromones();
-        foreach (var pheromone in pheromones)
-        {
-            if (pheromone.intensity < 5)
-            {
-                Gizmos.color = Color.red;
-            }
-            else if (pheromone.intensity < 15)
-            {
-                Gizmos.color = Color.orange;
-            }
-            else
-            {
-                Gizmos.color = Color.green;
-            }
-
-            Gizmos.DrawSphere(pheromone.position, 0.5f);
-        }
-
-        foreach (var nest in antNests)
-        {
-            Gizmos.color = Color.grey;
-            Gizmos.DrawSphere(nest.transform.position, 5);
-
-            List<Ant> ants = nest.Ants; 
-            foreach (var ant in ants)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawSphere(ant.position, 3);
-
-                foreach (var sensor in ant.sensors)
-                {
-                    Gizmos.color = Color.black;
-                    Gizmos.DrawSphere(sensor.Position, sensor.Radius / 2);
-                }
-            }
-        }
+        DrawPheromones();
+        DrawAnts();
 
         //foreach (var foodSource in foodSources)
         //{
@@ -121,5 +89,55 @@ public class Visualization : MonoBehaviour
 
             Gizmos.DrawSphere(foodCell.pos, 0.5f);
         }
+
+        void DrawPheromones()
+        {
+            if (!drawPheromones) return;
+
+            (Vector2 position, float intensity)[] pheromones = PheromoneManager.Instance.GetActivePheromones();
+            foreach (var pheromone in pheromones)
+            {
+                if (pheromone.intensity < 5)
+                {
+                    Gizmos.color = Color.red;
+                }
+                else if (pheromone.intensity < 15)
+                {
+                    Gizmos.color = Color.orange;
+                }
+                else
+                {
+                    Gizmos.color = Color.green;
+                }
+
+                Gizmos.DrawSphere(pheromone.position, 0.5f);
+            }
+        }
+
+        void DrawAnts()
+        {
+            if (!drawAnts) return;
+
+            foreach (var nest in antNests)
+            {
+                Gizmos.color = Color.grey;
+                Gizmos.DrawSphere(nest.transform.position, 5);
+
+                List<Ant> ants = nest.Ants;
+                foreach (var ant in ants)
+                {
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawSphere(ant.position, 3);
+
+                    foreach (var sensor in ant.sensors)
+                    {
+                        Gizmos.color = Color.black;
+                        Gizmos.DrawSphere(sensor.Position, sensor.Radius);
+                    }
+                }
+            }
+        }
+
+        
     }
 }
