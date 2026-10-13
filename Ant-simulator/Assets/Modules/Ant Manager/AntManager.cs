@@ -1,4 +1,9 @@
 using System.Collections.Generic;
+
+using Unity.VisualScripting;
+
+using UnityEditor;
+
 using UnityEngine;
 
 public class AntManager : MonoBehaviour
@@ -42,6 +47,11 @@ public class AntManager : MonoBehaviour
                 Vector2 lastPos = ant.position;
 
                 ant = Move(ant);
+
+                if (ant.depositFoodPheromone)
+                {
+                    PheromoneManager.Instance.DepositPheromoneOn(ant.id, ant.position, ant.foodPheromoneSettings, PheromoneType.Food);
+                }
                 ant = UpdateNestDirAproximatio(ant, lastPos);
 
                 nest.Ants[j] = ant;
@@ -76,8 +86,10 @@ public class AntManager : MonoBehaviour
         // Small random offset is added. This acts as uncertainty. The further the ant goes, the more "uncertain" it becomes.
         Vector2 movement = (ant.position - lastPos);
         ant.distanceTravelledFromNest += movement.magnitude;
-        ant.nestVector -= movement + new Vector2(Random.Range(0f, 0.0002f), Random.Range(0f, 0.0002f));
 
+        Vector2 random = Random.insideUnitCircle * ant.maxEstimateDeviation;
+        ant.nestVector -= movement + random;
+        
         if (ant.state == AntState.SearchingForNest)
         {
             return ant;
@@ -92,9 +104,6 @@ public class AntManager : MonoBehaviour
         // We have food.
         if (ant.haveFood)
         {
-            // Leave food pheromone.
-            PheromoneManager.Instance.DepositPheromoneOn(ant.id, ant.position, ant.foodPheromoneSettings, PheromoneType.Food);
-
             // We "see" the nest.
             if (ant.state == AntState.GoingToTheNest)
             {
@@ -123,6 +132,8 @@ public class AntManager : MonoBehaviour
         // We do not have food yet.
         else
         {
+            ant.depositFoodPheromone = false;
+
             // We "see" the food.
             if (ant.state == AntState.GoingTowardsFood)
             {
@@ -185,7 +196,7 @@ public class AntManager : MonoBehaviour
                 if (Time.time - ant.lastRandomRotation > ant.randomRotationFrequency)
                 {
                     ant.lastRandomRotation = Time.time;
-                    float rotDeg = Random.Range(10, 45);
+                    float rotDeg = Random.Range(ant.minRandomRotation, ant.maxRandomRotation);
                     float random = Random.value;
                     if (random >= 0.5)
                     {
@@ -203,20 +214,69 @@ public class AntManager : MonoBehaviour
                 ant.orientation = foodDirection.normalized;
                 break;
              case AntState.SearchingForNest:
-                // We go in the direction where we think the nest is. Based on our confidence in the direction, we explore around us.
-                float randomAmount = 1f - ant.nestDirectionConfidence;
-                ant.orientation = (ant.nestVector + new Vector2(-randomAmount, randomAmount)).normalized;
+                ant = SearchForNest(ant);
                 break;
             case AntState.GoingToTheNest:
                 ant.orientation = ant.NestDirection;
                 break;
             case AntState.FollowingFoodPheromone:
-                Vector2 pheromoneDirection = ant.targetPosition - ant.position;
-                ant.orientation = pheromoneDirection.normalized;
+                ant = FollowFoodPheromone(ant);
                 break;
             default:
                 break;
         }
+
+        return ant;
+    }
+
+    private Ant FollowFoodPheromone(Ant ant)
+    {
+        Vector2 pheromoneDirection = (ant.targetPosition - ant.position).normalized;
+
+        if (Vector2.Dot(pheromoneDirection, ant.nestVector.normalized) > 0.9f)
+        {
+            ant.orientation = -pheromoneDirection;
+        }
+        else
+        {
+            ant.orientation = pheromoneDirection;
+        }
+
+        return ant;
+    }
+
+    private Ant SearchForNest(Ant ant)
+    {
+        if (ant.nestSearchCenter != Vector2.zero)
+        {
+            ant.depositFoodPheromone = false; 
+            return SearchInASpiral(ant);
+        }
+
+        ant.depositFoodPheromone = true;
+        // We go in the direction where we think the nest is. Based on our confidence in the direction, we explore around us.
+        float randomAmount = 1f - ant.nestDirectionConfidence;
+        ant.orientation = (ant.nestVector + new Vector2(Random.Range(-randomAmount, randomAmount), Random.Range(-randomAmount, randomAmount))).normalized;
+
+        if (ant.nestVector.sqrMagnitude < 20)
+        {
+            ant.nestSearchCenter = ant.position;
+        }
+
+        return ant;
+    }
+
+    private Ant SearchInASpiral(Ant ant)
+    {
+        ant.nestSearchAngle += ant.nestSearchTurnSpeed * Time.deltaTime;
+        ant.nestSearchRadius += ant.nestSearchExpansionSpeed * Time.deltaTime;
+
+        Vector2 target = ant.nestSearchCenter + new Vector2(
+            Mathf.Cos(ant.nestSearchAngle),
+            Mathf.Sin(ant.nestSearchAngle)
+        ) * ant.nestSearchRadius;
+
+        ant.orientation = (target - ant.position).normalized;
 
         return ant;
     }

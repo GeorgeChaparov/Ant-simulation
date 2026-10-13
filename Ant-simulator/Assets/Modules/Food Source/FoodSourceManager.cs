@@ -84,13 +84,6 @@ public class FoodSourceManager : MonoBehaviour
 
         int newAmount = currentAmount - amount;
 
-        Debug.Log(
-            $"RemoveFood: index={index}, " +
-            $"amount={amount}, " +
-            $"currentAmount={currentAmount}, " +
-            $"newAmount={newAmount}"
-        );
-
         if (newAmount < 0)
         {
             Debug.LogError(

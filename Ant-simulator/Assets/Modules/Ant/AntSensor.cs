@@ -12,6 +12,9 @@ public class AntSensor
     float angle = 30;
     float sensorsDistance = 5;
 
+    bool searchForWeakPheromones = false;
+    public bool SearchForWeakPheromones => searchForWeakPheromones;
+
     /// <summary>
     /// The sensor the ant uses to check for food and pheromones.
     /// </summary>
@@ -20,7 +23,7 @@ public class AntSensor
     /// <param name="angle">The angle for the offset on the sensor from the forward direction of the ant.</param>
     /// <param name="sensorsDistance">How far the sensor should be from the ant.</param>
     /// <param name="radius">The radius in which the sensor will detect.</param>
-    public AntSensor(Vector2 antPos, Vector2 antOrientation, float angle, float sensorsDistance, int radius = 3) 
+    public AntSensor(Vector2 antPos, Vector2 antOrientation, float angle, float sensorsDistance, int radius, bool searchForWeakPheromones) 
     {
         orientation = Utils.Rotate(antOrientation, angle);
         position = antPos + orientation * sensorsDistance;
@@ -28,6 +31,7 @@ public class AntSensor
         this.angle = angle;
         this.sensorsDistance = sensorsDistance;
         this.radius = radius;
+        this.searchForWeakPheromones = searchForWeakPheromones;
     }
 
     /// <summary>
@@ -44,7 +48,7 @@ public class AntSensor
     public static (Vector2 foodSourcePosition, Vector2 foodPheromonePosition) Check(AntSensor[] sensors)
     {
         Vector2 foodSourcePosition = FoodSourceManager.Instance.GetFoodInRadius(sensors);
-        Vector2 foodPheromonePosition = PheromoneManager.Instance.GetWeakestWeightedPheromonePos(sensors, 0.2f, 0.2f);
+        Vector2 foodPheromonePosition = PheromoneManager.Instance.GetBiasedWeightedPheromonePos(sensors, 0.2f, 0.2f);
 
         return (foodSourcePosition, foodPheromonePosition);
     }

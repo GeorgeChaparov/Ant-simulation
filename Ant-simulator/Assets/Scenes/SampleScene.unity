@@ -472,9 +472,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FoodSourceManager
   foodSources:
   - {fileID: 600414789}
-  - {fileID: 378038853}
-  - {fileID: 366893929}
   - {fileID: 2007378788}
+  - {fileID: 366893929}
 --- !u!4 &596079133
 Transform:
   m_ObjectHideFlags: 0
@@ -649,8 +648,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a20250636fe3d5246b8a57138467d892, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AntNest
-  maxAnts: 400
+  maxAnts: 30
   spawnRate: 0.02
+  minMovementSpeed: 10
+  maxMovementSpeed: 25
+  minRandomRotation: 10
+  maxRandomRotation: 45
+  sensorRadius: 2
+  sensorDistance: 3
+  maxReliableDistance: 100
+  maxEstimateDeviation: 0.2
+  followWeakPheromones: 0
+  nestSearchTurnSpeed: 1
+  nestSearchExpansionSpeed: 3
 --- !u!4 &898662539
 Transform:
   m_ObjectHideFlags: 0
@@ -788,7 +798,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PheromoneManager
   updateInterval: 0.5
-  foodPheromoneDecayRate: 2
+  foodPheromoneDecayRate: 1
   maxIntensity: 15
 --- !u!4 &2009642947
 Transform:

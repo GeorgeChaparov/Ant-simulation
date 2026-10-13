@@ -1,3 +1,5 @@
+using Unity.VisualScripting;
+
 using UnityEngine;
 
 /// <summary>
@@ -38,6 +40,8 @@ public struct Ant
 
     public Vector2 orientation;
 
+    public bool depositFoodPheromone = false;
+
     /// <summary>
     /// When was the last random rotation while searching for food.
     /// </summary>
@@ -48,6 +52,16 @@ public struct Ant
     public readonly float randomRotationFrequency;
 
     /// <summary>
+    /// The min amount we can rotate while searching for food.
+    /// </summary>
+    public float minRandomRotation;
+
+    /// <summary>
+    /// The max amount we can rotate while searching for food.
+    /// </summary>
+    public float maxRandomRotation;
+
+    /// <summary>
     /// When was the last time that we checked for pheromone.
     /// </summary>
     public float lastPheromoneCheck = 0;
@@ -56,8 +70,8 @@ public struct Ant
     /// </summary>
     public readonly float pheromoneCheckFrequency;
 
-    public readonly float movementSpeed;
-    public readonly Vector2 Forward => (position + orientation).normalized;
+    public float movementSpeed;
+    public Vector2 Forward => (position + orientation).normalized;
 
     /// <summary>
     /// The general direction to the nest.
@@ -68,7 +82,7 @@ public struct Ant
     /// Its equal to the position in the beginning, because the nest is the thing that "spawns" the ant.
     /// </summary>
     public readonly Vector2 nestPosition;
-    public readonly Vector2 NestDirection => (nestPosition - position).normalized;
+    public Vector2 NestDirection => (nestPosition - position).normalized;
     /// <summary>
     /// The distance to the nest (not exact distance).
     /// </summary>
@@ -82,15 +96,15 @@ public struct Ant
     /// <summary>
     /// The travelled distance from a point of interest after which the ant will trust its estimate, of where it is, the least.
     /// </summary>
-    private float maxReliableDistance = 1000f;
+    public float maxReliableDistance = 1000f;
 
     /// <summary>
     /// How confident the ant is in its estimate of the nest direction.
     /// </summary>
     public float lastFoodSourceDirectionConfidence = 1f;
-    public float distanceTravelledFromLastFood = 0f;
+    public  float distanceTravelledFromLastFood = 0f;
 
-    public AntSensor[] sensors;
+    public  AntSensor[] sensors;
 
     public AntState state = AntState.None;
     public bool haveFood = false;
@@ -108,12 +122,45 @@ public struct Ant
     /// The number of blocks around the ant's sensor that are gonna be searched when searching for pheromones.
     /// Can be changed to FOV in the future.
     /// </summary>
-    public readonly int sensorRadius = 2;
+    public int sensorRadius = 2;
 
     /// <summary>
     /// How far the sensors sit from the ant
     /// </summary>
-    public readonly int sensorDistance = 3;
+    public int sensorDistance = 3;
+
+    /// <summary>
+    /// The random deviation on the ant when the estimate confidence is low.
+    /// </summary>
+    public float maxEstimateDeviation = 0.0002f;
+
+    public bool followWeakPheromones = false;
+
+    /// <summary>
+    /// Used save the position around which we are searching when we do not find the nest where we thought it is.
+    /// </summary>
+    public Vector2 nestSearchCenter = Vector2.zero;
+
+    /// <summary>
+    /// Used to accumulate the angle for the search when we do not find the nest where we thought it is.
+    /// </summary>
+    public float nestSearchAngle = 0f;
+
+    /// <summary>
+    /// Used to accumulate the radius for the search when we do not find the nest where we thought it is.
+    /// </summary>
+    public float nestSearchRadius = 0f;
+
+    /// <summary>
+    /// How fast will the ant turn when we do not find the nest where we thought it is.
+    /// </summary>
+    public float nestSearchTurnSpeed = 0f;
+
+    /// <summary>
+    /// How fast will the searching radius expand when we do not find the nest where we thought it is.
+    /// </summary>
+    public float nestSearchExpansionSpeed = 0f;
+
 
     // Metrics
     public int id;
@@ -121,7 +168,9 @@ public struct Ant
     public int tripsCompleted = 0;
     public float totalDistanceTraveled = 0;
 
-    public Ant(int id, Vector2 pos, Vector2 orientation)
+    public Ant(int id, Vector2 pos, Vector2 orientation, float movementSpeed, float maxEstimateDeviation, float minRandomRotation, 
+        float maxRandomRotation, int sensorDistance, int sensorRadius, bool followWeakPheromones,
+        float nestSearchTurnSpeed, float nestSearchExpansionSpeed)
     {
         this.id = id;
 
@@ -130,15 +179,26 @@ public struct Ant
 
         this.nestPosition = pos;
 
-        movementSpeed = Random.Range(6, 20);
+        this.movementSpeed = movementSpeed;
+        this.maxEstimateDeviation = maxEstimateDeviation;
+        this.minRandomRotation = minRandomRotation;
+        this.maxRandomRotation = maxRandomRotation;
+
+        this.nestSearchTurnSpeed = nestSearchTurnSpeed;
+        this.nestSearchExpansionSpeed = nestSearchExpansionSpeed;
+
         float halfSpeed = movementSpeed / 2;
         randomRotationFrequency = Random.Range(2 / halfSpeed, 4 / halfSpeed);
         pheromoneCheckFrequency = 0.4f / halfSpeed;
 
         this.sensors = new AntSensor[3];
-        sensors[0] = new AntSensor(pos, orientation, 35, sensorDistance, sensorRadius);
-        sensors[1] = new AntSensor(pos, orientation, 0, sensorDistance, sensorRadius);
-        sensors[2] = new AntSensor(pos, orientation, -35, sensorDistance, sensorRadius);
+        this.sensorDistance = sensorDistance;
+        this.sensorRadius = sensorRadius;
+        this.followWeakPheromones = followWeakPheromones;
+
+        sensors[0] = new AntSensor(pos, orientation, 35, sensorDistance, sensorRadius, followWeakPheromones);
+        sensors[1] = new AntSensor(pos, orientation, 0, sensorDistance, sensorRadius, followWeakPheromones);
+        sensors[2] = new AntSensor(pos, orientation, -35, sensorDistance, sensorRadius, followWeakPheromones);
         
         foodPheromoneSettings = new PheromoneSetting(10);
 
@@ -170,6 +230,10 @@ public struct Ant
     {
         nestDirectionConfidence = 1f;
         distanceTravelledFromNest = 0f;
+
+        nestSearchCenter = Vector2.zero;
+        nestSearchAngle = 0f;
+        nestSearchRadius = 0f;
     }
 
     public void CheckSensors()
