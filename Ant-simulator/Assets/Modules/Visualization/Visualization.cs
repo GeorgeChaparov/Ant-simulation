@@ -48,7 +48,7 @@ public class Visualization : MonoBehaviour
     private void Draw()
     {
         DrawPheromones();
-        DrawAnts();
+        DrawAntsAndNests();
 
         //foreach (var foodSource in foodSources)
         //{
@@ -114,14 +114,16 @@ public class Visualization : MonoBehaviour
             }
         }
 
-        void DrawAnts()
+        void DrawAntsAndNests()
         {
-            if (!drawAnts) return;
+            
 
             foreach (var nest in antNests)
             {
                 Gizmos.color = Color.grey;
                 Gizmos.DrawSphere(nest.transform.position, 5);
+
+                if (!drawAnts) return;
 
                 List<Ant> ants = nest.Ants;
                 foreach (var ant in ants)

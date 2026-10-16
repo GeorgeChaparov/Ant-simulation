@@ -11,8 +11,9 @@ public class FoodSource: MonoBehaviour
     int amount = 5;
     public int Amount => amount;
 
-    public FoodSource(int radius = 2, int amount = 5)
-    { 
+    public FoodSource(Vector2 position, int radius = 2, int amount = 5)
+    {
+        this.position = position;
         this.radius = radius;
         this.amount = amount;
     }

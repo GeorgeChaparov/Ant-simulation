@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using UnityEngine;
 
 public class FoodSourceManager : MonoBehaviour
@@ -49,6 +50,15 @@ public class FoodSourceManager : MonoBehaviour
 
     private void AddFoodSource(FoodSource foodSource)
     {
+        if (foodSource.Radius == 1)
+        {
+            int index = Utils.GetIndexFromVector(foodSource.Position);
+
+            foodAmount[index] += foodSource.Amount;
+
+            return;
+        }
+
         int x = Mathf.FloorToInt(foodSource.Position.x);
         int y = Mathf.FloorToInt(foodSource.Position.y);
 
@@ -72,7 +82,7 @@ public class FoodSourceManager : MonoBehaviour
 
                 int index = Utils.GetIndexFromPos(ix, iy);
 
-                foodAmount[index] = foodSource.Amount;
+                foodAmount[index] += foodSource.Amount;
             }
         }
     }
@@ -169,5 +179,12 @@ public class FoodSourceManager : MonoBehaviour
         }
 
         return food.ToArray();
+    }
+
+    public void AddFoodAt(Vector2 position, int radius, int amount)
+    {
+        FoodSource foodSource = new FoodSource(position, radius, amount);
+
+        AddFoodSource(foodSource);
     }
 }

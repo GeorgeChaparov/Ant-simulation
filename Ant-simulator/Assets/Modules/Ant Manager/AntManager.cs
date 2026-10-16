@@ -1,9 +1,4 @@
 using System.Collections.Generic;
-
-using Unity.VisualScripting;
-
-using UnityEditor;
-
 using UnityEngine;
 
 public class AntManager : MonoBehaviour
@@ -284,6 +279,16 @@ public class AntManager : MonoBehaviour
     public void AddNest(AntNest nest)
     {
         nests.Add(nest);
+        OnNestAdded();
+    }
+
+    public void AddNestAt(Vector2 position)
+    {
+        GameObject newNest = new GameObject("Nest");
+        newNest.transform.position = position;
+        AntNest antNest = newNest.AddComponent<AntNest>(); 
+        nests.Add(antNest);
+
         OnNestAdded();
     }
 
