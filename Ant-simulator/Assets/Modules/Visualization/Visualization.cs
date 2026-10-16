@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using UnityEngine;
@@ -7,10 +8,11 @@ public class Visualization : MonoBehaviour
     private static Visualization instance = null;
     public static Visualization Instance { get { return instance; } }
     private AntNest[] antNests = new AntNest[0];
-    public FoodSource[] foodSources = new FoodSource[0];
 
     public bool drawAnts = true;
     public bool drawPheromones = true;
+    public bool drawObstacles = true;
+
 
     private void Awake()
     {
@@ -25,9 +27,7 @@ public class Visualization : MonoBehaviour
     public void OnSimulationInitialize()
     {
         UpdateNests();
-        AntManager.Instance.OnNestAdded += UpdateNests;
-        UpdateFoodSources();
-        FoodSourceManager.Instance.OnFoodSourceAdded += UpdateFoodSources;
+        AntManager.Instance.OnNestsUpdated += UpdateNests;
     }
 
     private void OnDrawGizmos()
@@ -40,25 +40,15 @@ public class Visualization : MonoBehaviour
         antNests = AntManager.Instance.Nests.ToArray();
     }
 
-    private void UpdateFoodSources()
-    {
-        foodSources = FoodSourceManager.Instance.FoodSources.ToArray();
-    }
 
     private void Draw()
     {
+        DrawObstacles();
         DrawPheromones();
         DrawAntsAndNests();
 
-        //foreach (var foodSource in foodSources)
-        //{
-        //    Gizmos.color = Color.brown;
-        //    Debug.Log(foodSource.Position);
-        //    Debug.Log(foodSource.Radius);
-        //    Gizmos.DrawSphere(foodSource.Position, foodSource.Radius);
-        //}
-
         (Vector2 pos, float amount)[] foodCells = FoodSourceManager.Instance.GetFood();
+        float maxFoodAmount = FoodSourceManager.Instance.MaxFoodAmount;
         foreach (var foodCell in foodCells)
         {
             if (foodCell.amount == 0)
@@ -66,19 +56,25 @@ public class Visualization : MonoBehaviour
                 continue;
             }
 
-            if (foodCell.amount < 1)
+
+            float maxAmount20 = (maxFoodAmount * 20) / 100;
+            float maxAmount40 = (maxFoodAmount * 40) / 100;
+            float maxAmount60 = (maxFoodAmount * 60) / 100;
+            float maxAmount80 = (maxFoodAmount * 80) / 100;
+
+            if (foodCell.amount <= maxAmount20)
             {
                 Gizmos.color = Color.gray1;
             }
-            else if (foodCell.amount < 2)
+            else if (foodCell.amount <= maxAmount40)
             {
                 Gizmos.color = Color.gray3;
             }
-            else if (foodCell.amount < 3)
+            else if (foodCell.amount <= maxAmount60)
             {
                 Gizmos.color = Color.gray5;
             }
-            else if (foodCell.amount < 3)
+            else if (foodCell.amount <= maxAmount80)
             {
                 Gizmos.color = Color.gray7;
             }
@@ -88,6 +84,17 @@ public class Visualization : MonoBehaviour
             }
 
             Gizmos.DrawSphere(foodCell.pos, 0.5f);
+        }
+
+        void DrawObstacles()
+        {
+            if (!drawObstacles) return;
+            Vector2[] obstaclesPos = ObstacleManager.Instance.GetObstacles();
+            Gizmos.color = Color.brown;
+            foreach (var obstaclePos in obstaclesPos)
+            {
+                Gizmos.DrawCube(obstaclePos, new Vector3(1, 1, 1));
+            }
         }
 
         void DrawPheromones()
@@ -116,8 +123,6 @@ public class Visualization : MonoBehaviour
 
         void DrawAntsAndNests()
         {
-            
-
             foreach (var nest in antNests)
             {
                 Gizmos.color = Color.grey;
@@ -139,7 +144,5 @@ public class Visualization : MonoBehaviour
                 }
             }
         }
-
-        
     }
 }

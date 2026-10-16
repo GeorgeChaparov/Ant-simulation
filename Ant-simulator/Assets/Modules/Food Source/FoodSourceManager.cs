@@ -1,12 +1,12 @@
+using System;
 using System.Collections.Generic;
 
 using UnityEngine;
+using UnityEngine.UIElements;
+
 
 public class FoodSourceManager : MonoBehaviour
 {
-    public delegate void FoodSourceAdded();
-    public event FoodSourceAdded OnFoodSourceAdded;
-
     private int width = 10;
     private int height = 10;
     private int gridSize = 0;
@@ -18,6 +18,11 @@ public class FoodSourceManager : MonoBehaviour
     public static FoodSourceManager Instance { get { return instance; } }
 
     private int[] foodAmount;
+
+    [SerializeField]
+    private float maxFoodAmount = 15;
+
+    public float MaxFoodAmount => maxFoodAmount;
 
     private void Awake()
     {
@@ -50,41 +55,11 @@ public class FoodSourceManager : MonoBehaviour
 
     private void AddFoodSource(FoodSource foodSource)
     {
-        if (foodSource.Radius == 1)
+        Utils.DoForeachInRadius(foodSource.Position, foodSource.Radius, index =>
         {
-            int index = Utils.GetIndexFromVector(foodSource.Position);
-
             foodAmount[index] += foodSource.Amount;
-
-            return;
-        }
-
-        int x = Mathf.FloorToInt(foodSource.Position.x);
-        int y = Mathf.FloorToInt(foodSource.Position.y);
-
-        int minX = Mathf.Max(0, x - foodSource.Radius);
-        int maxX = Mathf.Min(width - 1, x + foodSource.Radius);
-
-        int minY = Mathf.Max(0, y - foodSource.Radius);
-        int maxY = Mathf.Min(height - 1, y + foodSource.Radius);
-
-        int radiusSquared = foodSource.Radius * foodSource.Radius;
-
-        for (int iy = minY; iy <= maxY; iy++)
-        {
-            for (int ix = minX; ix <= maxX; ix++)
-            {
-                int dx = ix - x;
-                int dy = iy - y;
-
-                if (dx * dx + dy * dy > radiusSquared)
-                    continue;
-
-                int index = Utils.GetIndexFromPos(ix, iy);
-
-                foodAmount[index] += foodSource.Amount;
-            }
-        }
+            ObstacleManager.Instance.AddObstacleAt(index);
+        });
     }
 
     public bool RemoveFoodAt(Vector2 pos, int amount)
@@ -105,7 +80,25 @@ public class FoodSourceManager : MonoBehaviour
         }
 
         foodAmount[index] = newAmount;
+
+        if (newAmount == 0)
+        {
+            ObstacleManager.Instance.RemoveObstacleAt(index);
+        }
+
         return true;
+    }
+
+    public void DeleteFoodAt(Vector2 position, int radius)
+    {
+        Utils.DoForeachInRadius(position, radius, index =>
+        {
+            if (foodAmount[index] > 0)
+            {
+                foodAmount[index] = 0;
+                ObstacleManager.Instance.RemoveObstacleAt(index);
+            }
+        });
     }
 
     public Vector2 GetFoodInRadius(AntSensor[] antSensors)
@@ -164,6 +157,11 @@ public class FoodSourceManager : MonoBehaviour
         }
 
         return foodPos;
+    }
+
+    public bool HaveFoodAtIndex(int index)
+    {
+        return foodAmount[index] != 0;
     }
 
     public (Vector2 pos, float amount)[] GetFood()

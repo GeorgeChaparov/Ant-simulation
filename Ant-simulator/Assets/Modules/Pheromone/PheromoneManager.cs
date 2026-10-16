@@ -207,43 +207,21 @@ public class PheromoneManager : MonoBehaviour
     /// <returns>The average position of all of the pheromones in range with an offset towards the weakest/strongest pheromone as well as its intensity.</returns>
     private (Vector2 averagePos, float weakestVal, int pheromoneCount) GetAveragePheromonPosInRagne(Vector2 position, PheromoneType type, int radius, float biasedOffset, bool weakBias)
     {
-        int x = Mathf.FloorToInt(position.x);
-        int y = Mathf.FloorToInt(position.y);
-
-        int minX = Mathf.Max(0, x - radius);
-        int maxX = Mathf.Min(width - 1, x + radius);
-
-        int minY = Mathf.Max(0, y - radius);
-        int maxY = Mathf.Min(height - 1, y + radius);
-
-        int radiusSquared = radius * radius;
-
         Vector2 averagePos = Vector2.zero;
         int count = 0;
 
         Vector2 selectedPos = Vector2.zero;
         float selectedVal = weakBias ? float.MaxValue : 0;
 
-        for (int iy = minY; iy <= maxY; iy++)
+        Utils.DoForeachInRadius(position, radius, index =>
         {
-            for (int ix = minX; ix <= maxX; ix++)
+            float intensity = GetPheromoneAt(index, type);
+
+            if (intensity != 0)
             {
-                int dx = ix - x;
-                int dy = iy - y;
+                Vector2 pos = Utils.GetVectorFromIndex(index);
 
-                if (dx * dx + dy * dy > radiusSquared)
-                    continue;
-
-                int index = Utils.GetIndexFromPos(ix, iy);
-
-                float intensity = GetPheromoneAt(index, type);
-
-                if (intensity == 0)
-                {
-                    continue;
-                }
-
-                averagePos += new Vector2(ix, iy);
+                averagePos += pos;
 
                 bool biasedBool = (weakBias && intensity < selectedVal) ||
                                   (!weakBias && intensity > selectedVal);
@@ -251,12 +229,12 @@ public class PheromoneManager : MonoBehaviour
                 if (biasedBool)
                 {
                     selectedVal = intensity;
-                    selectedPos = new Vector2(ix, iy);
+                    selectedPos = pos;
                 }
 
                 count++;
             }
-        }
+        });
 
         if (count == 0)
             return (Vector2.zero, 0, 0);

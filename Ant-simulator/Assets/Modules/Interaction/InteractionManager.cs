@@ -1,3 +1,5 @@
+using System;
+
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -11,10 +13,6 @@ public enum Placable
 public class InteractionManager : MonoBehaviour
 {
     private Placable placableItem = Placable.None;
-
-    private bool isMousePressedDown = false;
-    private bool isMousePressed = false;
-    private bool isMousePressedUp = false;
 
     private float lastDragPlace = 0;
 
@@ -41,8 +39,7 @@ public class InteractionManager : MonoBehaviour
     void Update()
     {
         SelectPlacableItem();
-        GetMousePress();
-        PlaceItem();
+        Interact();
     }
 
     private void SelectPlacableItem()
@@ -61,42 +58,85 @@ public class InteractionManager : MonoBehaviour
         }
     }
 
-    private void GetMousePress()
+    private void Interact()
     {
-        isMousePressedDown = Mouse.current.leftButton.wasPressedThisFrame;
-        isMousePressed = Mouse.current.leftButton.isPressed;
-        isMousePressedUp = Mouse.current.leftButton.wasReleasedThisFrame;
+        Dragable();
+        NonDragable();
     }
 
-    private void PlaceItem()
+    private void Dragable()
     {
-        switch (placableItem)
+        if (Mouse.current.leftButton.isPressed &&
+            Time.time - lastDragPlace > timeBetweenDragPlaceing)
         {
-            case Placable.None:
-                break;
-            case Placable.Food:
-                PlaceFood();
-                break;
-            case Placable.Wall:
-                PlaceWall();
-                break;
-            case Placable.Nest:
-                PlaceNest();
-                break;
-            default:
-                break;
+            switch (placableItem)
+            {
+                case Placable.None:
+                    break;
+                case Placable.Food:
+                    PlaceFood();
+                    break;
+                case Placable.Wall:
+                    PlaceWall();
+                    break;
+                default:
+                    break;
+            }
+
+            lastDragPlace = Time.time;
+        }
+
+        if (Mouse.current.rightButton.isPressed)
+        {
+            switch (placableItem)
+            {
+                case Placable.None:
+                    break;
+                case Placable.Food:
+                    DeleteFood();
+                    break;
+                case Placable.Wall:
+                    DeleteWall();
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    private void NonDragable()
+    {
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            switch (placableItem)
+            {
+                case Placable.None:
+                    break;
+                case Placable.Nest:
+                    PlaceNest();
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (Mouse.current.rightButton.wasPressedThisFrame)
+        {
+            switch (placableItem)
+            {
+                case Placable.None:
+                    break;
+                case Placable.Nest:
+                    DeleteNest();
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
     private void PlaceFood()
     {
-        if (!isMousePressed || Time.time - lastDragPlace < timeBetweenDragPlaceing)
-        {
-            return;
-        }
-
-        lastDragPlace = Time.time;
-
         Vector2 position = GetMousePosition();
         int amount = 1;
         FoodSourceManager.Instance.AddFoodAt(position, brushRadius, amount);
@@ -104,25 +144,32 @@ public class InteractionManager : MonoBehaviour
 
     private void PlaceWall()
     {
-        if (!isMousePressed || Time.time - lastDragPlace < timeBetweenDragPlaceing)
-        {
-            return;
-        }
-
-        lastDragPlace = Time.time;
-
         Vector2 position = GetMousePosition();
-        //ObstacleManager.Instance.AddWallAt(position);
+        ObstacleManager.Instance.AddObstacleAt(position, brushRadius);
     }
 
     private void PlaceNest()
     {
-        if (!isMousePressedDown)
-        {
-            return;
-        }
         Vector2 position = GetMousePosition();
         AntManager.Instance.AddNestAt(position);
+    }
+
+    private void DeleteFood()
+    {
+        Vector2 position = GetMousePosition();
+        FoodSourceManager.Instance.DeleteFoodAt(position, brushRadius);
+    }
+
+    private void DeleteWall()
+    {
+        Vector2 position = GetMousePosition();
+        ObstacleManager.Instance.DeleteObstacleAt(position, brushRadius);
+    }
+
+    private void DeleteNest()
+    {
+        Vector2 position = GetMousePosition();
+        AntManager.Instance.DeleteNestAt(position, brushRadius);
     }
 
 

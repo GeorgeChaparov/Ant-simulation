@@ -1,11 +1,14 @@
+using NUnit.Framework.Internal;
+
 using System.Collections.Generic;
+
 using UnityEngine;
 
 public class AntManager : MonoBehaviour
 {
 
     public delegate void NestAdded();
-    public event NestAdded OnNestAdded;
+    public event NestAdded OnNestsUpdated;
     [SerializeField]
     private List<AntNest> nests = new List<AntNest>();
 
@@ -279,7 +282,7 @@ public class AntManager : MonoBehaviour
     public void AddNest(AntNest nest)
     {
         nests.Add(nest);
-        OnNestAdded();
+        OnNestsUpdated();
     }
 
     public void AddNestAt(Vector2 position)
@@ -289,11 +292,34 @@ public class AntManager : MonoBehaviour
         AntNest antNest = newNest.AddComponent<AntNest>(); 
         nests.Add(antNest);
 
-        OnNestAdded();
+        OnNestsUpdated();
+    }
+
+    public void DeleteNestAt(Vector2 position, int radius)
+    {
+        for (int i = nests.Count - 1; i >= 0; i--)
+        {
+            AntNest nest = nests[i];
+
+            int nestIndex = Utils.GetIndexFromVector(nest.transform.position);
+
+            Utils.DoForeachInRadius(position, radius, index =>
+            {
+                if (nestIndex == index)
+                {
+                    Destroy(nest.gameObject);
+                    nests.RemoveAt(i);
+
+                    OnNestsUpdated();
+                }
+            });
+        }
     }
 
     public void RemoveNest(int nestIndex)
     {
+        Destroy(nests[nestIndex].gameObject);
         nests.RemoveAt(nestIndex);
+        OnNestsUpdated();
     }
 }

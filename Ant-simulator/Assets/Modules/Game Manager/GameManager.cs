@@ -23,12 +23,14 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
-
-        OnInitialized += Visualization.Instance.OnSimulationInitialize;
     }
 
     private void Start()
     {
+        OnInitialized += Visualization.Instance.OnSimulationInitialize;
+
+        // Obstacle needs to be initiated before food.
+        ObstacleManager.Instance.Init(gridWidth, gridHeight);
         PheromoneManager.Instance.Init(gridWidth, gridHeight);
         FoodSourceManager.Instance.Init(gridWidth, gridHeight);
 

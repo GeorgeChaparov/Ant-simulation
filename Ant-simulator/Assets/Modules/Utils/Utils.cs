@@ -1,4 +1,9 @@
+using System;
+
 using UnityEngine;
+using UnityEngine.UIElements;
+
+using static UnityEditor.PlayerSettings;
 
 public class Utils
 {
@@ -47,5 +52,42 @@ public class Utils
         int y = index / GameManager.Instance.gridWidth;
 
         return new Vector2(x, y);
+    }
+
+    public static void DoForeachInRadius(Vector2 position, int radius, Action<int> action)
+    {
+        if (radius == 1)
+        {
+            int index = Utils.GetIndexFromVector(position);
+            action(index);
+
+            return;
+        }
+
+        int x = Mathf.FloorToInt(position.x);
+        int y = Mathf.FloorToInt(position.y);
+
+        int minX = Mathf.Max(0, x - radius);
+        int maxX = Mathf.Min(GameManager.Instance.gridWidth - 1, x + radius);
+
+        int minY = Mathf.Max(0, y - radius);
+        int maxY = Mathf.Min(GameManager.Instance.gridHeight - 1, y + radius);
+
+        int radiusSquared = radius * radius;
+
+        for (int iy = minY; iy <= maxY; iy++)
+        {
+            for (int ix = minX; ix <= maxX; ix++)
+            {
+                int dx = ix - x;
+                int dy = iy - y;
+
+                if (dx * dx + dy * dy > radiusSquared)
+                    continue;
+
+                int index = Utils.GetIndexFromPos(ix, iy);
+                action(index);
+            }
+        }
     }
 }
