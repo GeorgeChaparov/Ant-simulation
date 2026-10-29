@@ -1,481 +1,546 @@
 # Ant Foraging Simulation
 
-A Unity/C# **agent-based simulation** exploring how simple local rules can produce emergent colony-level behavior.
+A **C# / Unity agent-based simulation** exploring how simple local rules can produce emergent colony behavior.
 
-Ants continuously move through a 2D environment, search for food, return toward their nest using an internal directional estimate, and lay pheromone trails that other ants can detect and follow.
+Ants search for food without global knowledge, return to their nest using an internal navigation estimate, deposit pheromones, and use pheromone trails to discover previously found food.
 
-The project is primarily an exploration of **simulation systems, agent behavior, spatial algorithms, and performance-conscious data structures**.
+The project is designed as a software-engineering experiment around **agent behavior, spatial data structures, state machines, and simulation architecture**.
+
+![Ant simulation overview](docs/Ant_simulation_overview.gif)
 
 > **Status:** Active development  
-> **Engine:** Unity 6  
-> **Unity Version:** 6000.4.11f1  
+> **Engine:** Unity 6 · **6000.4.11f1**  
 > **Language:** C#  
-> **Focus:** Agent-based simulation · Emergent behavior · Spatial algorithms · State machines
+> **Focus:** Agent-based simulation · Emergent behavior · Spatial algorithms · State machines · Data-oriented storage
 
 ---
 
-## Overview
+## What the Simulation Does
 
-The simulation is built around a simple feedback loop:
+The colony follows a simple feedback loop:
 
-```text
-        ┌───────────────┐
-        │     Nest      │
-        └───────┬───────┘
-                │
-                ▼
-        Search for food
-                │
-       ┌────────┴────────┐
-       │                 │
-   Food found       No information
-       │                 │
-       ▼                 ▼
-  Move to food      Explore randomly
-       │
-       ▼
-  Pick up food
-       │
-       ▼
-  Return to nest
-       │
-  Deposit pheromone
-       │
-       ▼
-      Nest
-       │
-       ▼
- Follow food pheromone
-       │
-       └──────────────► Food
+```mermaid
+flowchart TD
+    A[Ant leaves nest] --> B[Local exploration]
+    B --> C{Food detected?}
+    C -- No --> B
+    C -- Yes --> D[Move toward food]
+    D --> E[Collect food]
+    E --> F[Estimate nest direction]
+    F --> G[Return toward nest]
+    G --> H[Deposit food pheromone]
+    H --> I[Reach nest]
+    I --> J[Leave without food]
+    J --> K{Pheromone detected?}
+    K -- No --> B
+    K -- Yes --> L[Follow pheromone]
+    L --> C
 ```
 
-No ant receives a predefined route to a food source. Instead, each ant uses information available through its sensors and its own internal state.
+The important part is that **no central system calculates a route for the colony**.
 
-The colony's behavior therefore emerges from the interaction between:
+Each ant operates from:
 
-- Individual exploration
-- Local sensing
-- Food discovery
-- Pheromone deposition
-- Pheromone decay
-- Pheromone trail following
-- Approximate nest localization
-- Environmental changes
+- Its current state
+- Its local sensor observations
+- Its movement history
+- Its estimate of the nest direction
+- Pheromone information in its immediate surroundings
+
+The colony-level trail therefore emerges from many independent local decisions.
 
 ---
 
-## What Makes the Simulation Interesting
+## Demo
 
-The ants use **continuous movement** rather than moving from cell to cell.
+### Colony Foraging
 
-The environment, however, uses a discrete spatial representation for things such as:
+<!-- GIF: Replace with `docs/gifs/ant-foraging.gif` showing ants discovering food and establishing a trail. -->
 
-- Food
-- Obstacles
-- Pheromone intensity
+![Colony foraging demonstration](docs/Ant_simulation_foraging.gif)
 
-This separation allows the agents to move freely while keeping spatial queries and pheromone storage relatively inexpensive.
+### Pheromone Formation and Decay
 
-```text
-Continuous ant movement
-          │
-          ▼
-   ┌───────────────┐
-   │ Local sensors │
-   └───────┬───────┘
-           │
-     ┌─────┴─────┐
-     ▼           ▼
-   Food      Pheromones
-     │           │
-     └─────┬─────┘
-           ▼
-      State decision
-           │
-           ▼
-       New movement
+<!-- GIF: Replace with `docs/gifs/pheromone-decay.gif` showing a trail being deposited, reinforced and eventually decaying. -->
+
+![Pheromone demonstration](docs/Ant_simulation_pheromone_system.gif)
+---
+
+# Core Systems
+
+## 1. Agent-Based Ant Model
+
+Each ant is represented by a lightweight C# `struct` containing its simulation state rather than being a separate `MonoBehaviour`.
+
+An ant maintains information such as:
+
+- Position and orientation
+- Current behavioral state
+- Movement speed
+- Food-carrying state
+- Nest-direction estimate
+- Navigation confidence
+- Distance travelled
+- Food-source observations
+- Pheromone observations
+- Sensor configuration
+- Runtime metrics
+
+This keeps the **simulation state separate from Unity's scene hierarchy**.
+
+```mermaid
+classDiagram
+    class Ant {
+        +Vector2 position
+        +Vector2 orientation
+        +AntState state
+        +bool haveFood
+        +Vector2 nestVector
+        +float nestDirectionConfidence
+        +Vector2 foodSourcePosition
+        +Vector2 foodPheromonePosition
+        +AntSensor[] sensors
+        +float totalDistanceTraveled
+        +int tripsCompleted
+        +Move(Vector2 newPos)
+        +CheckSensors()
+        +CalculateNestPosConfidence()
+        +ResetNestInfo()
+    }
+
+    class AntSensor {
+        +Vector2 Position
+        +Vector2 Orientation
+        +int Radius
+        +float Angle
+        +Update()
+        +Check()
+    }
+
+    Ant "1" *-- "3" AntSensor
 ```
 
+This design also makes it possible for the simulation managers to update large collections of ants without requiring a Unity component for every agent.
+
 ---
 
-# Ant Behavior
+# 2. Local Sensing
 
-## Behavioral State Machine
+Ants do not query the entire environment when making movement decisions.
 
-Each ant has an explicit behavioral state:
+Each ant has **three forward-facing sensors**:
 
-```text
-                    ┌─────────────────────┐
-                    │  SearchingForFood   │
-                    └──────────┬──────────┘
-                               │
-                         food detected
-                               ▼
-                    ┌─────────────────────┐
-                    │ GoingTowardsFood    │
-                    └──────────┬──────────┘
-                               │
-                         food collected
-                               ▼
-                    ┌─────────────────────┐
-                    │ SearchingForNest    │
-                    └──────────┬──────────┘
-                               │
-                       nest detected
-                               ▼
-                    ┌─────────────────────┐
-                    │ GoingToTheNest      │
-                    └──────────┬──────────┘
-                               │
-                         food delivered
-                               ▼
-                    ┌─────────────────────┐
-                    │ FollowingFood       │
-                    │ Pheromone           │
-                    └──────────┬──────────┘
-                               │
-                         food detected
-                               │
-                               └────────────►
+```mermaid
+flowchart LR
+    A[Ant] --> S1["Sensor +35°"]
+    A --> S2["Sensor 0°"]
+    A --> S3["Sensor -35°"]
+
+    S1 --> F[Food detection]
+    S2 --> F
+    S3 --> F
+
+    S1 --> P[Pheromone detection]
+    S2 --> P
+    S3 --> P
 ```
 
-This keeps high-level behavior separate from the movement calculations used to execute it.
+Each sensor has a configurable:
+
+| Parameter | Purpose |
+|---|---|
+| Angle | Position relative to the ant's forward direction |
+| Distance | How far the sensor is placed from the ant |
+| Radius | Size of the local area it can inspect |
+| Pheromone preference | Whether strong or weak pheromone information is preferred |
+
+The sensors query the `FoodSourceManager` and `PheromoneManager` rather than directly accessing their internal storage.
+
+This gives the ant a **local perception layer** between the agent and the environment.
+
+<!-- GIF: Replace with `docs/gifs/sensors.gif` showing the three sensor regions in the Unity scene. -->
 
 ---
 
-## Searching for Food
+# 3. Explicit Ant State Machine
 
-When an ant has no food and no usable pheromone information, it performs a **stochastic exploration pattern**.
+Ant behavior is modeled using an explicit state machine.
 
-Instead of choosing a completely new random direction every frame, the ant maintains its current direction and periodically applies a random rotation.
+```mermaid
+stateDiagram-v2
+    [*] --> SearchingForFood
 
-This produces more persistent exploration paths and avoids excessively jittery movement.
+    SearchingForFood --> GoingTowardsFood: Food detected
+    SearchingForFood --> FollowingFoodPheromone: Pheromone detected
 
-The rotation range and frequency are configurable per nest.
+    GoingTowardsFood --> GoingTowardsFood: Food still unavailable
+    GoingTowardsFood --> SearchingForFood: Food depleted
+    GoingTowardsFood --> SearchingForNest: Food collected
 
----
+    FollowingFoodPheromone --> GoingTowardsFood: Food detected
+    FollowingFoodPheromone --> SearchingForFood: Trail unavailable
 
-## Detecting Food
+    SearchingForNest --> GoingToTheNest: Nest within reliable range
+    SearchingForNest --> SearchingForNest: Estimate available
 
-Each ant has three forward-facing sensors:
-
-```text
-                    Sensor
-                       ●
-                      /
-                     /
-               Ant ●────────● Sensor
-                     \
-                      \
-                       ●
-                    Sensor
+    GoingToTheNest --> FollowingFoodPheromone: Nest reached
 ```
 
-The sensors are positioned relative to the ant's current orientation.
+The state machine separates **high-level intent** from the movement calculation.
 
-Each sensor has:
+For example:
 
-- A configurable distance from the ant
-- A configurable detection radius
-- A configurable angular offset
+- `SearchingForFood` controls exploration.
+- `GoingTowardsFood` converts the known food position into a movement direction.
+- `SearchingForNest` uses the ant's internal nest estimate.
+- `GoingToTheNest` uses the detected nest direction.
+- `FollowingFoodPheromone` converts local pheromone information into a movement direction.
 
-The current implementation uses three sensors at approximately:
-
-```text
-+35°     0°     -35°
-  ●──────●──────●
-```
-
-The sensors are used to detect both **food sources and pheromone information**.
-
-This gives each ant a limited local view of the environment instead of giving it direct access to global information about the simulation.
+This makes adding or changing behavior considerably easier than embedding every rule into one movement function.
 
 ---
 
-# Returning to the Nest
+# 4. Navigation Under Uncertainty
 
-An important part of the simulation is that ants do not simply use the nest's world position as a navigation target.
+One of the more interesting parts of the simulation is the return journey.  <br>
+An ant does not use the nest's world position as a normal pathfinding target while it is away from the nest.
 
-When an ant leaves the nest, it starts with a perfect estimate of the nest's direction.
+Instead, it maintains an internal estimate of the nest direction:
 
-As it moves, the ant updates an internal `nestVector` using its accumulated movement and a small amount of uncertainty.
+```mermaid
+flowchart TD
+    A[Ant leaves nest] --> B[Initial nest estimate]
+    B --> C[Move]
+    C --> D[Accumulate travelled distance]
+    D --> E[Update nest vector]
+    E --> F[Reduce confidence]
+    F --> G{Nest reliably detected?}
+    G -- Yes --> H[Move directly toward nest]
+    G -- No --> I[Add directional uncertainty]
+    I --> C
+    H --> J{Nest reached?}
+    J -- No --> H
+    J -- Yes --> K[Reset navigation state]
+```
+
+The estimate is updated from the ant's own movement:
 
 ```text
-Nest
-  ●
-   \
-    \
-     \       Ant
-      \       ●
-       \     ↙
-        \   estimated direction
+nestVector ← nestVector - movement + uncertainty
 ```
 
 The ant also tracks:
 
-- Distance traveled from the nest
-- Confidence in its nest-direction estimate
+- `distanceTravelledFromNest`
+- `nestDirectionConfidence`
+- `maxReliableDistance`
 
-Confidence decreases as the ant travels farther from the point where its estimate was established.
+Confidence is calculated from the distance travelled:
 
-When confidence is low, the ant introduces more directional variation instead of blindly trusting its estimate.
+```text
+confidence = clamp01(
+    1 - distanceTravelledFromNest / maxReliableDistance
+)
+```
 
-This creates a simplified model of **navigation under uncertainty**.
+As confidence decreases, the ant introduces more variation into its movement direction.
+
+This creates a simple model of **navigation with an increasingly uncertain internal estimate**.
 
 ---
 
-## Nest Recovery
+# 5. Nest Recovery Search
 
-If the ant reaches the estimated nest location, but does not find it, it switches to an expanding spiral search.
+When the ant's estimate becomes sufficiently unreliable, it can transition into an expanding search around its estimated location.
 
-```text
-             ┌───────┐
-          ┌──┘       │
-       ┌──┘     ●────┘
-       │      Ant
-       │
-       └───────────────
+```mermaid
+flowchart TD
+    A[Low nest-vector confidence] --> B[Create search center]
+    B --> C[Increase search angle]
+    C --> D[Increase search radius]
+    D --> E[Move toward spiral target]
+    E --> F{Nest found?}
+    F -- No --> C
+    F -- Yes --> G[Return to nest]
 ```
 
-The search is controlled by:
+The search is generated procedurally from:
 
 - Search center
 - Search angle
 - Search radius
-- Angular search speed
-- Radius expansion speed
+- Search turning speed
+- Search expansion speed
 
-This allows an ant to recover from an inaccurate internal estimate without receiving the nest's global position as its target.
+This avoids requiring a precomputed path or global navigation map.
 
 ---
 
-# Pheromone System
+# 6. Pheromone Trails
 
-Pheromones are stored as a **numerical intensity field**.
+Pheromones are represented as a **numerical spatial field**.
 
-Each spatial cell can contain a food pheromone intensity, or any other pheromone intensity.
+Each cell stores food-pheromone intensity:
 
-```text
-┌────┬────┬────┬────┬────┐
-│    │    │  5 │ 12 │ 20 │
-├────┼────┼────┼────┼────┤
-│    │  2 │ 10 │ 25 │ 30 │
-├────┼────┼────┼────┼────┤
-│    │    │  8 │ 18 │ 22 │
-└────┴────┴────┴────┴────┘
+```mermaid
+flowchart LR
+    A["World position"] --> B["Grid coordinate"]
+    B --> C["Flat array index"]
+    C --> D["foodIntensity[index]"]
 ```
 
-When an ant returns from a food source, it deposits pheromone along its path.
-
-A second ant can then detect the trail and use it to bias its movement toward the food source.
-
----
-
-## Pheromone Detection
-
-The three ant sensors inspect their surrounding spatial regions for pheromone intensity.
-
-The pheromone system calculates information from the detected cells, including:
-
-- Average pheromone position
-- Pheromone intensity
-- Number of detected pheromone cells
-- The strongest or weakest detected pheromone depending on configuration
-
-The result is then combined across the sensors to produce a target position for the ant.
-
----
-
-## Pheromone Decay
-
-Pheromones gradually decay over time.
-
-The current decay model also makes stronger pheromone concentrations decay more slowly:
+For a grid with width `W`:
 
 ```text
-Intensity
-   │
-100│\
-   │ \
-   │  \
- 50│   \__
-   │      \___
-   │          \____
-  0└──────────────────► Time
+index = y × W + x
 ```
 
-Active pheromone cells are tracked in a `HashSet<int>`.
+This provides a compact representation of the pheromone environment and avoids creating potentially thousands of scene objects.
 
-This avoids iterating over the entire spatial field every time pheromones need to be updated.
+### Depositing pheromones
 
-When a cell's intensity falls below the active threshold, it is removed from the active set.
+When an ant is returning with food, it periodically deposits food pheromone at its current grid cell.
+
+Deposits from the same ant are throttled for the same cell to prevent repeatedly reinforcing a single location every frame.
+
+### Detecting pheromones
+
+Each sensor searches its local circular region and calculates:
+
+1. The average position of detected pheromone cells.
+2. The strongest or weakest detected intensity, depending on configuration.
+3. The number of detected cells.
+
+The three sensor results are then combined into a target position.
+
+```mermaid
+flowchart TD
+    A[Sensor 1] --> D[Local pheromone result]
+    B[Sensor 2] --> E[Local pheromone result]
+    C[Sensor 3] --> F[Local pheromone result]
+
+    D --> G[Compare detected pheromone]
+    E --> G
+    F --> G
+
+    G --> H[Select strongest/weakest information]
+    H --> I[Blend with sensor containing most pheromone]
+    I --> J[Pheromone target position]
+    J --> K[Ant movement direction]
+```
+
+This is more than a simple nearest-object lookup: the ant receives an **aggregate directional signal** from its local pheromone field.
 
 ---
 
-# Spatial Data Structures
+# 7. Pheromone Decay
 
-The environment uses flat arrays indexed from a 2D coordinate:
+Pheromone intensity is continuously reduced over time.
 
-```text
-index = y × width + x
+The system maintains a `HashSet<int>` containing cells that currently have active pheromone.
+
+```mermaid
+flowchart TD
+    A[Ant deposits pheromone] --> B[Increase cell intensity]
+    B --> C[Add cell to activeCells]
+
+    D[Periodic pheromone update] --> E[Iterate active cells]
+    E --> F[Apply decay]
+    F --> G{Intensity still active?}
+
+    G -- Yes --> E
+    G -- No --> H[Remove from activeCells]
 ```
 
-For example:
+This is an example of **lazy spatial updating**.
 
-```text
-┌───┬───┬───┬───┐
-│ 0 │ 1 │ 2 │ 3 │
-├───┼───┼───┼───┤
-│ 4 │ 5 │ 6 │ 7 │
-├───┼───┼───┼───┤
-│ 8 │ 9 │10 │11 │
-└───┴───┴───┴───┘
-```
+Instead of scanning every cell in the entire grid on every update, the manager only considers cells that currently contain active pheromone.
 
-Separate arrays are used for different types of environmental information.
-
-For example:
-
-- `foodAmount[]`
-- `foodIntensity[]`
-- `obstacles[]`
-
-This avoids creating a Unity object for every environmental cell.
-
-The same representation also makes local radius queries straightforward by converting a world position into a set of relevant cell indices.
+That becomes increasingly useful as the simulation area grows while the pheromone-covered area remains relatively small.
 
 ---
 
-# Dynamic Environment
+# 8. Spatial Data Representation
 
-The simulation supports modifying the environment while it is running.
+The simulation uses flat arrays for grid-based environmental data. <br>
+Current environmental data includes:
 
-The player can place and remove:
+- Food amount
+- Food pheromone intensity
 
-- Food
-- Walls/obstacles
-- Nests
+The grid is used for efficient local queries while ant movement itself remains continuous.
 
-The environment therefore does not have to be completely defined before the simulation starts.
+---
 
-### Controls
+# 9. Food Detection and Collection
 
-| Input | Action |
-|---|---|
-| `Q` | Select food placement |
-| `W` | Select wall/obstacle placement |
-| `E` | Select nest placement |
-| Left mouse | Place selected item |
-| Right mouse | Remove selected item |
+Food is stored as an amount per spatial cell.  <br>
+Food sources can cover multiple cells using a circular radius.
 
-Food and wall placement support brush-based interaction, allowing larger regions to be modified by dragging.
+When an ant reaches a detected food location:
 
-### Important limitation
+1. It requests one unit of food from `FoodSourceManager`.
+2. The manager validates that food is still available.
+3. The ant changes to its return behavior.
+4. The ant begins depositing food pheromone.
 
-Obstacles are currently represented and visualized by the environment system, but **ant movement does not yet perform obstacle avoidance/path planning**. The obstacle system is therefore currently an experimental foundation for future environmental-interaction behavior.
+The manager therefore remains the authoritative owner of food quantities.
 
 ---
 
 # Architecture
 
-The project is divided into modules with focused responsibilities.
+The project was intentionally split into systems with focused responsibilities.
 
-```text
-                         Simulation
-                             │
-                     ┌───────┴───────┐
-                     │  GameManager  │
-                     └───────┬───────┘
-                             │
-       ┌─────────────┬───────┼────────┬──────────────┐
-       ▼             ▼       ▼        ▼              ▼
- AntManager   FoodSource  Pheromone  Obstacle   Interaction
-                  Manager   Manager    Manager     Manager
-       │
-       ▼
-    AntNest
-       │
-       ▼
-      Ant
-       │
-       ▼
-    Sensors
+```mermaid
+flowchart TD
+    GM["GameManager<br/>Simulation initialization"]
+
+    GM --> AM["AntManager"]
+    GM --> PM["PheromoneManager"]
+    GM --> FM["FoodSourceManager"]
+    GM --> V["Visualization"]
+
+    AM --> AN["AntNest"]
+    AN --> A["Ant"]
+    A --> S["AntSensor"]
+
+    S --> FM
+    S --> PM
+
+    A --> PM
+    A --> FM
+
+    AM --> PM
+
+    V --> AM
+    V --> PM
+    V --> FM
 ```
 
-### Main modules
+### Responsibilities
 
-| Module | Responsibility |
+| System | Responsibility |
 |---|---|
-| `AntManager` | Updates ants, evaluates their states, and determines movement |
-| `AntNest` | Owns ants belonging to a nest and controls spawning |
-| `Ant` | Stores an individual ant's state, navigation estimates, sensors, and metrics |
-| `AntSensor` | Represents local environmental sensing |
-| `FoodSourceManager` | Stores food amounts and handles food detection/collection |
+| `GameManager` | Initializes shared simulation systems and generates ant IDs |
+| `AntManager` | Updates ants, selects behavioral states, and calculates movement |
+| `AntNest` | Owns a colony's ants and controls spawning |
+| `Ant` | Stores individual agent state and navigation information |
+| `AntSensor` | Provides local environmental observations |
+| `FoodSourceManager` | Stores food quantities and performs food queries/collection |
 | `PheromoneManager` | Stores, queries, deposits, and decays pheromone intensity |
-| `ObstacleManager` | Stores and modifies environmental obstacles |
-| `InteractionManager` | Converts user input into environment modifications |
-| `Visualization` | Visualizes ants, nests, food, pheromones, and obstacles |
-| `GameManager` | Initializes the simulation systems and provides ant IDs |
-| `Utils` | Provides shared spatial and mathematical operations |
----
+| `Visualization` | Draws ants, sensors, food, nests, and pheromone fields |
+| `Utils` | Provides shared coordinate conversion and vector operations |
 
-# Ant Data Model
-
-An ant is represented as a C# `struct`.
-
-The ant stores its simulation state directly, including:
-
-- Position and orientation
-- Current behavioral state
-- Food carrying state
-- Nest estimate
-- Nest confidence
-- Sensor data
-- Movement speed
-- Pheromone configuration
-- Search state
-- Runtime metrics
-
-This keeps the individual simulation agent independent from Unity's scene hierarchy.
-
-Planned optimisation is to convert the data model from Array of Structures (AoS) to Structure of Arrays to further optimes the simulation.
+The separation is intentional: **ants decide how to behave, managers own shared environmental data, and visualization observes the simulation state.**
 
 ---
 
-# Runtime Metrics
+# Data Flow
 
-Each ant currently tracks several metrics that can be used for future colony-level analysis:
+A typical food-discovery cycle crosses the systems like this:
 
-- Unique ant ID
-- Age
-- Number of completed trips
-- Total distance traveled
+```mermaid
+sequenceDiagram
+    participant A as Ant
+    participant S as AntSensor
+    participant F as FoodSourceManager
+    participant P as PheromoneManager
+    participant M as AntManager
 
-The project is intended to expose these metrics more directly in the future so that different simulation configurations can be compared quantitatively.
+    M->>A: Update
+    A->>S: Check local sensors
+    S->>F: Search food in sensor ranges
+    S->>P: Search pheromone field
+    F-->>S: Food position
+    P-->>S: Pheromone position
+    S-->>A: Local observations
+
+    A->>M: Select behavior
+    M->>A: Move toward food
+
+    A->>F: Collect food
+    F-->>A: Food available
+
+    M->>A: Return toward nest
+    A->>P: Deposit food pheromone
+    P->>P: Update active cell
+```
+
+This makes the ownership boundaries explicit and keeps shared state out of the individual ant logic.
+
+---
+
+# Performance Considerations
+
+The project is intentionally designed with simulation scale in mind.
+
+### Lightweight agents
+
+Ants are stored as C# structs rather than one `MonoBehaviour` per ant.
+
+### Flat spatial storage
+
+Grid data uses contiguous arrays:
+
+```text
+2D coordinate → integer index → array lookup
+```
+
+This avoids per-cell object allocation and makes the representation compact.
+
+### Active-cell tracking
+
+Pheromone decay uses:
+
+```text
+HashSet<int> activeCells
+```
+
+rather than iterating through every grid cell on every update.
+
+### Bounded local queries
+
+Ant sensors only inspect a local radius instead of scanning the complete environment.
+
+```mermaid
+flowchart LR
+    A["Entire simulation"] --> B["Sensor radius"]
+    B --> C["Local cells only"]
+    C --> D["Behavior decision"]
+```
+
+The result is a simulation architecture that can be scaled independently in several dimensions: **number of agents, environment size, and amount of active pheromone.**
 
 ---
 
 # Configuration
 
-Many simulation parameters are exposed through the Unity Inspector.
+Important simulation parameters are exposed through Unity's Inspector.
 
-Examples include:
+### Colony
 
-### Ant behavior
+- Maximum ants
+- Spawn rate
+- Movement-speed range
 
-- Minimum/maximum movement speed
-- Random rotation range
+### Exploration
+
+- Minimum random rotation
+- Maximum random rotation
 - Random rotation frequency
-- Sensor distance
+
+### Sensors
+
 - Sensor radius
-- Pheromone preference
-- Maximum reliable navigation distance
+- Sensor distance
+- Sensor angles
 
-### Nest recovery
+### Navigation
 
+- Maximum reliable distance
 - Maximum estimate deviation
-- Nest search turning speed
+- Nest search turn speed
 - Nest search expansion speed
 
 ### Pheromones
@@ -484,93 +549,108 @@ Examples include:
 - Maximum intensity
 - Decay rate
 - Update interval
+- Strong/weak pheromone preference
 
-### Colony
-
-- Maximum ants per nest
-- Ant spawn rate
-
-This makes it possible to experiment with different behavioral parameters without changing the core simulation code.
+This allows the same simulation to be used for experiments without modifying the underlying algorithms.
 
 ---
 
-# Technical Highlights
+# Metrics
 
-### Agent-based modeling
+Each ant already maintains simulation metrics that can be used for future experiments:
 
-The simulation models individual agents with their own state and limited perception while allowing shared environmental information to influence the colony.
+| Metric | Purpose |
+|---|---|
+| `id` | Identify individual agents |
+| `age` | Track agent lifetime |
+| `tripsCompleted` | Measure successful nest/food cycles |
+| `totalDistanceTraveled` | Measure movement efficiency |
+| `distanceTravelledFromNest` | Estimate navigation uncertainty |
+| `nestDirectionConfidence` | Observe navigation confidence |
+| `lastFoodSourceDirectionConfidence` | Foundation for food-source memory |
 
-### Emergent behavior
+The next step is to expose these metrics at the colony level so that different simulation configurations can be compared quantitatively.
 
-Colony-level trail formation is not explicitly scripted. It emerges from repeated interactions between ants and the pheromone field.
 
-### State machines
+# Current Limitations
 
-Ant behavior is represented explicitly through a small state machine, making behavioral transitions easier to reason about and extend.
+Current limitations include:
 
-### Navigation under uncertainty
+- Only food pheromones are implemented.
+- Ants currently use a simplified nest-direction estimate .
+- Food-source memory exists in the ant state model but is not yet used as a complete fallback navigation strategy.
+- Obstacle-based navigation is not currently implemented.
+- Colony-level statistics are stored per ant but do not yet have a dedicated analysis interface.
 
-Ants estimate the direction of their nest using accumulated movement rather than receiving the nest position as their navigation target.
+These constraints are deliberate boundaries for the current version and provide clear directions for future experimentation.
 
-### Local sensing
+---
 
-Ant decisions are based on information gathered from three local sensors rather than global environmental knowledge.
+# Roadmap
 
-### Spatial indexing
+```mermaid
+flowchart LR
+    A["Current<br/>Agent simulation"] --> B["Food-source memory"]
+    B --> C["Obstacle avoidance"]
+    C --> D["Multiple pheromone types"]
+    D --> E["Colony statistics"]
+    E --> F["Repeatable experiments"]
+    F --> G["Strategy comparison"]
+    G --> H["Larger-scale simulation"]
+```
 
-Food, pheromones, and obstacles use flat-array spatial representations, making local queries and environmental updates predictable.
+Planned work:
 
-### Lazy pheromone updates
+- [ ] Use remembered food-source direction when pheromone information disappears.
+- [ ] Improve food-source confidence and memory decay.
+- [ ] Add obstacle-aware movement.
+- [ ] Add additional pheromone types.
+- [ ] Add colony-level statistics and experiment summaries.
+- [ ] Add repeatable simulation configurations.
+- [ ] Compare different exploration strategies.
+- [ ] Compare different pheromone-following strategies.
+- [ ] Measure food retrieval rate, travel distance, and completed trips.
+- [ ] Investigate scaling to larger colonies.
+- [ ] Precompute masks for the sensor search.
 
-Only cells containing active pheromones are considered for decay, reducing unnecessary work across empty parts of the environment.
-
-### Interactive experimentation
-
-The environment can be modified while the simulation is running, making it possible to experiment with how the colony reacts to changes.
+The long-term goal is to turn the project into a small experimental platform for **collective behavior and agent-based algorithms**.
 
 ---
 
 # Project Structure
 
 ```text
-Ant-simulator/
-└── Assets/
-    └── Modules/
-        ├── Ant/
-        │   ├── Ant.cs
-        │   └── AntSensor.cs
-        │
-        ├── Ant Manager/
-        │   └── AntManager.cs
-        │
-        ├── Ant Nest/
-        │   └── AntNest.cs
-        │
-        ├── Food Source/
-        │   ├── FoodSource.cs
-        │   └── FoodSourceManager.cs
-        │
-        ├── Game Manager/
-        │   └── GameManager.cs
-        │
-        ├── Interaction/
-        │   └── InteractionManager.cs
-        │
-        ├── Navigation/
-        │   └── Directions.cs
-        │
-        ├── Obstacle Manager/
-        │   └── ObstacleManager.cs
-        │
-        ├── Pheromone/
-        │   ├── Pheromone.cs
-        │   └── PheromoneManager.cs
-        │
-        ├── Utils/
-        │   └── Utils.cs
-        │
-        └── Visualization/
-            └── Visualization.cs
+Assets/
+└── Modules/
+    ├── Ant/
+    │   ├── Ant.cs
+    │   └── AntSensor.cs
+    │
+    ├── Ant Manager/
+    │   └── AntManager.cs
+    │
+    ├── Ant Nest/
+    │   └── AntNest.cs
+    │
+    ├── Food Source/
+    │   ├── FoodSource.cs
+    │   └── FoodSourceManager.cs
+    │
+    ├── Game Manager/
+    │   └── GameManager.cs
+    │
+    ├── Navigation/
+    │   └── Directions.cs
+    │
+    ├── Pheromone/
+    │   ├── Pheromone.cs
+    │   └── PheromoneManager.cs
+    │
+    ├── Utils/
+    │   └── Utils.cs
+    │
+    └── Visualization/
+        └── Visualization.cs
 ```
 
 ---
@@ -579,67 +659,18 @@ Ant-simulator/
 
 ## Requirements
 
+- **Unity 6000.4.11f1**
 - Unity Hub
-- Unity **6000.4.11f1**
-- A desktop platform supported by Unity 6
+- Desktop platform supported by Unity 6
 
-## Running in the Unity Editor
+## Setup
 
 1. Clone the repository.
-2. Open the `Ant-simulator` directory in Unity Hub.
+2. Open the `Ant-simulator` folder in Unity Hub.
 3. Open `Assets/Scenes/SampleScene.unity`.
 4. Press **Play**.
 
-Simulation parameters can be adjusted from the relevant objects in the Unity Inspector.
-
----
-
-# Current Limitations
-
-This is an **experimental agent-based simulation**, not a biologically accurate model of ant colonies.
-
-Current simplifications include:
-
-- The environment uses a discrete spatial representation for food, pheromones, and obstacles.
-- Ant movement is continuous within that environment.
-- Pheromones are represented as intensity values rather than a physical chemical diffusion model.
-- Navigation uses simplified directional memory rather than a biologically complete navigation mechanism.
-- Obstacle placement exists, but ants do not currently perform obstacle avoidance.
-- Colony-level statistics are tracked internally but are not yet presented through a dedicated analysis UI.
-- Food-source direction memory is present in the data model but is not yet used as a complete fallback navigation strategy.
-
-These limitations also define the next areas of development.
-
----
-
-# Planned Development
-
-The next stage of the project focuses on making the simulation more useful for experimentation and quantitative comparison.
-
-- [ ] Improve pheromone-following using stronger weighting of sensor information.
-- [ ] Use the last known food-source direction as a fallback when pheromone information disappears.
-- [ ] Improve directional confidence for food-source memory.
-- [ ] Implement obstacle avoidance and evaluate how trails adapt around obstacles.
-- [ ] Add additional pheromone types.
-- [ ] Add colony-level statistics and experiment summaries.
-- [ ] Add repeatable simulation configurations.
-- [ ] Measure food retrieval rate, travel distance, and trip completion time.
-- [ ] Compare different exploration and pheromone-following strategies.
-- [ ] Investigate scaling the simulation to larger colonies.
-
-The longer-term goal is to turn the project from a behavioral prototype into a small platform for experimenting with **collective behavior and agent-based algorithms**.
-
----
-
-# Why I Built This
-
-I built this project to explore a programming problem where the final behavior is not directly scripted.
-
-The central question is:
-
-> **How can simple rules applied independently to many agents produce useful behavior at the system level?**
-
-The emphasis is on the **behavioral and computational model**, rather than visual complexity.
+Simulation parameters can be changed from the relevant objects in the Unity Inspector.
 
 ---
 
@@ -647,5 +678,5 @@ The emphasis is on the **behavioral and computational model**, rather than visua
 
 - **C#**
 - **Unity 6**
-- **Unity 2D / URP**
-- **Git**
+- **Unity 2D URP**
+- Git
