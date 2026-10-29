@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 
+using Unity.VisualScripting;
+
 using UnityEngine;
 
 public class PheromoneManager : MonoBehaviour
@@ -128,55 +130,50 @@ public class PheromoneManager : MonoBehaviour
     /// If the pheromone is not found, it returns Vector2.zero.</returns>
     public Vector2 GetBiasedWeightedPheromonePos(AntSensor[] sensors, float intensityOffset, float biasedOffset)
     {
-        (Vector2 pos, float val, int pheromoneCount)[] foundPheromones = new (Vector2 weakestPosLeft, float weakestValLeft, int pheromoneCount)[sensors.Length];
-
         bool weakBias = sensors[0].SearchForWeakPheromones;
 
         intensityOffset = Math.Clamp(intensityOffset, 0f, 1f);
         biasedOffset = Math.Clamp(biasedOffset, 0f, 1f);
 
+        int mostPheromones = 0;
+        Vector2 mostPheromonePos = Vector2.zero;
+
+        float selectedVal = weakBias ? float.MaxValue : float.MinValue;
+        Vector2 selectedPos = Vector2.zero;
+
+        bool foundPheromone = false;
+
         for (int i = 0; i < sensors.Length; i++)
         {
             AntSensor sensor = sensors[i];
 
-            foundPheromones[i] = GetAveragePheromonPosInRagne(sensor.Position, PheromoneType.Food, sensor.Radius, biasedOffset, weakBias);
-        }
+            (Vector2 currPos, float currVal, int currPheromoneCount) = 
+                    GetAveragePheromonPosInRagne( sensor.Position, PheromoneType.Food, sensor.Radius, biasedOffset, weakBias);
 
-        int mostPheromones = foundPheromones[0].pheromoneCount;
-        int sensorIndexWithMostPheromones = 0;
-        float selectedVal = weakBias ? float.MaxValue : 0;
-        Vector2 selectedPos = Vector2.zero;
+            if (currPheromoneCount == 0) continue;
 
-        for (int i = 0; i < sensors.Length; i++)
-        {
-            if (foundPheromones[i].pheromoneCount == 0)
+            foundPheromone = true;
+
+            if (currPheromoneCount > mostPheromones)
             {
-                continue;
+                mostPheromones = currPheromoneCount;
+                mostPheromonePos = currPos;
             }
 
-            if (mostPheromones < foundPheromones[i].pheromoneCount)
-            {
-                mostPheromones = foundPheromones[i].pheromoneCount;
-                sensorIndexWithMostPheromones = i;
-            }
+            bool isBetter = weakBias ? 
+                currVal < selectedVal : 
+                currVal > selectedVal;
 
-            bool biasedBool = (weakBias && selectedVal > foundPheromones[i].val) ||
-                              (!weakBias && selectedVal < foundPheromones[i].val);
-
-            if (biasedBool)
+            if (isBetter)
             {
-                selectedVal = foundPheromones[i].val;
-                selectedPos.x = foundPheromones[i].pos.x;
-                selectedPos.y = foundPheromones[i].pos.y;
+                selectedVal = currVal;
+                selectedPos = currPos;
             }
         }
 
-        if (selectedPos != foundPheromones[sensorIndexWithMostPheromones].pos)
-        {
-            selectedPos = Vector2.Lerp(selectedPos, foundPheromones[sensorIndexWithMostPheromones].pos, intensityOffset);
-        }
+        if (!foundPheromone) return Vector2.zero;
 
-        return selectedPos;
+        return Vector2.Lerp(selectedPos, mostPheromonePos, intensityOffset);
     }
 
     /// <summary>
@@ -205,44 +202,67 @@ public class PheromoneManager : MonoBehaviour
     /// <param name="biasedOffset">An offset between 0.00 and 1.00 towards the cell with the smallest/biggest valid intensity, based on the bias</param>
     /// <param name="weakBias">If true, the position will be biased towards the smallest intensity cell. Else its biased towards the cell with the biggest intensity.</param>
     /// <returns>The average position of all of the pheromones in range with an offset towards the weakest/strongest pheromone as well as its intensity.</returns>
-    private (Vector2 averagePos, float weakestVal, int pheromoneCount) GetAveragePheromonPosInRagne(Vector2 position, PheromoneType type, int radius, float biasedOffset, bool weakBias)
+    private (Vector2 averagePos, float weakestVal, int pheromoneCount) GetAveragePheromonPosInRagne(Vector2 position,PheromoneType type,int radius, float biasedOffset, bool weakBias)
     {
-        Vector2 averagePos = Vector2.zero;
+        int averageX = 0;
+        int averageY = 0;
         int count = 0;
 
-        Vector2 selectedPos = Vector2.zero;
-        float selectedVal = weakBias ? float.MaxValue : 0;
+        (int x, int y) selectedPos = (0, 0);
+        float selectedVal = weakBias ? float.MaxValue : float.MinValue;
 
-        Utils.DoForeachInRadius(position, radius, index =>
+        int x = Mathf.FloorToInt(position.x);
+        int y = Mathf.FloorToInt(position.y);
+
+        int minX = Mathf.Max(0, x - radius);
+        int maxX = Mathf.Min(GameManager.Instance.gridWidth - 1, x + radius);
+
+        int minY = Mathf.Max(0, y - radius);
+        int maxY = Mathf.Min(GameManager.Instance.gridHeight - 1, y + radius);
+
+        int radiusSquared = radius * radius;
+
+        for (int iy = minY; iy <= maxY; iy++)
         {
-            float intensity = GetPheromoneAt(index, type);
-
-            if (intensity != 0)
+            for (int ix = minX; ix <= maxX; ix++)
             {
-                Vector2 pos = Utils.GetVectorFromIndex(index);
+                int dx = ix - x;
+                int dy = iy - y;
 
-                averagePos += pos;
+                if (dx * dx + dy * dy > radiusSquared)
+                    continue;
 
-                bool biasedBool = (weakBias && intensity < selectedVal) ||
-                                  (!weakBias && intensity > selectedVal);
+                int index = Utils.GetIndexFromPos(ix, iy);
+                float intensity = GetPheromoneAt(index, type);
 
-                if (biasedBool)
+                if (intensity == 0f)
+                    continue;
+
+                averageX += ix;
+                averageY += iy;
+                count++;
+
+                bool isBetter = weakBias ? 
+                    intensity < selectedVal : 
+                    intensity > selectedVal;
+
+                if (isBetter)
                 {
                     selectedVal = intensity;
-                    selectedPos = pos;
+                    selectedPos = (ix, iy);
                 }
-
-                count++;
             }
-        });
+        }
 
-        if (count == 0)
-            return (Vector2.zero, 0, 0);
+        if (count == 0) return (Vector2.zero, 0f, 0);
 
-        Vector2 average = averagePos / count;
-        Vector2 weigthedAveragePos = Vector2.Lerp(average, selectedPos, biasedOffset);
+        Vector2 average = new Vector2(
+            (float)averageX / count,
+            (float)averageY / count);
 
-        return (weigthedAveragePos, selectedVal, count);
+        Vector2 weightedAveragePos = Vector2.Lerp(average, new Vector2(selectedPos.x, selectedPos.y), biasedOffset);
+
+        return (weightedAveragePos, selectedVal, count);
     }
 
     private float GetPheromoneAt(int index, PheromoneType type)
